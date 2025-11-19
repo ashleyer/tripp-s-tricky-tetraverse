@@ -1,0 +1,189 @@
+# Tripp's Tricky Tetraverse: an All Four You Kids’ Arcade
+
+In honour of Tripp's Fourth Birthday, I nixed a boring old card and took a stab at developing a kid-friendly arcade of web games with gentle screen-time tools, a parent info overlay, and simple skill snapshots based on how kids play.
+
+---
+
+## 🎮 What’s Inside?
+
+This app is designed for young kids (roughly 3–10) to tap around and have fun while parents stay in control of time and context.
+
+### Games (The “Arcade”)
+
+Each game appears in an animated carousel with:
+
+- A **catchy title**
+- A one-line **description**
+- The key **skills it builds**
+- Difficulty label and skill **category**
+
+Current games:
+
+1. **Match the Pairs (Memory Game)**  
+   Flip cards two at a time and try to remember where each picture is hiding.
+
+   - Skills: Memory, focus, pattern spotting
+   - Category: Memory
+
+2. **Treasure Dig (Digging Game)**  
+   Tap squares in a little grid to “dig” and find a hidden treasure.
+
+   - Skills: Patience, basic strategy
+   - Category: Problem Solving
+
+3. **Isabelle’s Boots**  
+   Isabelle wants matching colorful boots. Kids tap to pick boots that match the target color.
+
+   - Skills: Color matching, attention to detail
+   - Category: Attention & Coordination
+
+4. **Airplane Catch**  
+   Tap the planes as they “float” across the screen and catch them all.
+
+   - Skills: Hand-eye coordination, reaction time
+   - Category: Attention & Coordination
+
+Each game reports a simple score and number of attempts back to the main app.
+
+> **Note:** All scores and “skill” labels are playful and approximate. They are **not** medical, psychological, or educational assessments.
+
+---
+
+## 👦 Player Profiles & Avatars
+
+Kids can create a simple profile:
+
+- **Name** (first name or nickname)
+- **Age** (used only for light “compared to kids your age” messages)
+- **Avatar:**
+  - Choose from a **built-in avatar library** (cute emoji-style options)
+  - Or **upload a photo** from this device
+
+Avatar options:
+
+- Built-in: emoji-based avatar pills like `🚀`, `🦕`, `🦄`, `🧑‍✈️`
+- Upload: a local image file; a preview appears in the profile card
+
+> **Privacy:** Avatar uploads never leave the browser. There is no backend, no database, and no tracking.
+
+---
+
+## ⏱ Screen Time & Safety
+
+Parents can set a **screen-time limit** in minutes.
+
+- When a limit is set, a countdown starts.
+- When time runs out:
+  - Games are **locked** automatically.
+  - A kid-friendly message suggests taking a break (stretch, snack, book).
+- The current remaining time is always visible:
+  - Example: `⏱ 5m 32s remaining`
+
+You can update the limit at any time:
+
+- Setting a new limit restarts the timer.
+- Setting 0 or leaving it blank effectively turns off the timer.
+
+### Safety Principles
+
+- No ads
+- No sign-up
+- No external links for kids to tap
+- No chat or messaging
+- No violence, gore, jumpscares, or adult themes
+
+> This app is not a babysitter or a diagnostic tool. It’s just a small set of gentle games to sprinkle into a kid’s day.
+
+---
+
+## 👨‍👩‍👧 Parent Overlay
+
+There is a **“For Parents”** button in the top-right header.
+
+- Opens a modal (overlay) with:
+  - A clear explanation of:
+    - Screen-time tools
+    - Data/privacy (no remote storage)
+    - That the “skill snapshot” is **not** assessment
+  - Gentle guidance:
+    - Encourage parents to stay nearby
+    - Remind that offline activities and real-world connection are more important than screen time
+
+Parents can close the overlay with a single primary button (`Got it – let’s play`).
+
+---
+
+## 📈 “Performance vs Age Group” Snapshot
+
+The app tracks simple high-level statistics:
+
+- **Memory**
+- **Problem Solving**
+- **Attention & Coordination**
+
+For each game:
+
+- It logs a **score** (0–100-ish) and **attempts**.
+- Scores are purely local and based on:
+  - Number of attempts
+  - How quickly correct actions happen
+
+Then it synthesizes a one-line summary like:
+
+> “Memory: You’re above many kids your age. Attention & Coordination: You’re right around other kids your age.”
+
+Important:
+
+- These comparisons are **fake baselines** (simple thresholds built into the app).
+- They are meant to be **encouraging**, not evaluative.
+- The app does **not** compare children to any real population or dataset.
+
+---
+
+## 🧱 Tech Stack
+
+- **Frontend:** React + TypeScript (e.g. Vite React + TS template)
+- **Styles:** Global CSS defined in `index.html`:
+  - Dark, arcade-like, green-accent theme
+  - Responsive layout for phones, tablets, and desktops
+- **Accessibility:**
+  - Semantic headings and regions
+  - ARIA labels for grids, cards, buttons, and dialog
+  - Focus outlines for inputs and interactive elements
+  - Color contrast tuned for dark background
+- **Sounds:**
+  - Uses `<audio>` via `new Audio(...)` for:
+    - Button clicks
+    - Successful actions
+    - Failed attempts
+
+You provide the actual sound files as `.mp3`s in `public/sounds`.
+
+Recommended filenames (to match the existing code):
+
+- `public/sounds/click.mp3`
+- `public/sounds/success.mp3`
+- `public/sounds/fail.mp3`
+
+You can use any short sounds you like!
+
+---
+
+## 🗂 Project Structure (Minimal Example)
+
+If you scaffold with Vite (React + TypeScript), a typical shape is:
+
+```text
+all-four-you-arcade/
+├─ index.html          
+├─ package.json
+├─ public/
+│  └─ sounds/
+│     ├─ click.mp3
+│     ├─ success.mp3
+│     └─ fail.mp3
+└─ src/
+   ├─ main.tsx
+   └─ App.tsx          
+____
+Built with ❤️ in Boston by [@ashleyer](https://github.com/ashleyer).

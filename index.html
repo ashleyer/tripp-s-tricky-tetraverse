@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Tripp's Tricky Tetraverse: an All Four You Kids' Arcade</title>
+    <meta
+      name="description"
+      content="in honour of Tripp's Fourth Birthday, i replaced a boring old bday card with this kid-friendly four-game arcade with productive parent controls"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Basic, responsive, accessible-friendly styles -->
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #020617;
+        --bg-soft: #0b1220;
+        --card-bg: #020617;
+        --card-border: rgba(148, 163, 184, 0.4);
+        --accent: #16a34a;
+        --accent-soft: rgba(22, 163, 74, 0.15);
+        --accent-strong: #15803d;
+        --text-main: #e5e7eb;
+        --text-muted: #9ca3af;
+        --danger: #f97373;
+        --radius-lg: 18px;
+        --radius-sm: 10px;
+        --shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.7);
+        --shadow-subtle: 0 8px 20px rgba(15, 23, 42, 0.6);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: radial-gradient(circle at top, #064e3b, #020617 55%);
+        color: var(--text-main);
+      }
+
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: stretch;
+      }
+
+      #root {
+        width: 100%;
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 1rem;
+      }
+
+      .app-root {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        gap: 1.2rem;
+      }
+
+      .app-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.4rem;
+        border-radius: var(--radius-lg);
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        background: radial-gradient(circle at top left, #0f172a, #020617 55%);
+        box-shadow: var(--shadow-soft);
+      }
+
+      .header-main {
+        max-width: 80%;
+      }
+
+      .app-title {
+        margin: 0 0 0.3rem;
+        font-size: clamp(1.6rem, 2vw, 2rem);
+      }
+
+      .app-subtitle {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 0.95rem;
+      }
+
+      .header-right {
+        display: flex;
+        align-items: center;
+      }
+
+      .parent-button,
+      .primary-button,
+      .secondary-button {
+        border-radius: 999px;
+        border: none;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: transform 0.1s ease, box-shadow 0.1s ease,
+          background 0.1s ease, color 0.1s ease;
+      }
+
+      .parent-button {
+        background: rgba(15, 23, 42, 0.7);
+        color: var(--text-main);
+        border: 1px solid rgba(148, 163, 184, 0.7);
+        box-shadow: var(--shadow-subtle);
+      }
+
+      .parent-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
+      }
+
+      .primary-button {
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        color: white;
+        box-shadow: 0 12px 30px rgba(22, 163, 74, 0.5);
+      }
+
+      .primary-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 16px 36px rgba(22, 163, 74, 0.6);
+      }
+
+      .secondary-button {
+        background: transparent;
+        color: var(--text-main);
+        border: 1px solid rgba(148, 163, 184, 0.5);
+      }
+
+      .secondary-button:hover {
+        background: rgba(15, 23, 42, 0.8);
+      }
+
+      .profile-section,
+      .performance-section,
+      .arcade-section,
+      .game-section {
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--card-border);
+        background: radial-gradient(circle at top, #020617, #020617 60%);
+        box-shadow: var(--shadow-soft);
+        padding: 1rem 1.2rem;
+      }
+
+      .profile-card h2,
+      .performance-section h2,
+      .arcade-section h2,
+      .game-section h2 {
+        margin-top: 0;
+      }
+
+      .profile-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+      }
+
+      .profile-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.2fr);
+        gap: 1rem;
+      }
+
+      @media (max-width: 768px) {
+        .app-header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .header-main {
+          max-width: 100%;
+        }
+
+        .profile-grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      .form-label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        margin-bottom: 0.6rem;
+      }
+
+      input[type="text"],
+      input[type="number"],
+      input[type="file"] {
+        background: #020617;
+        border-radius: 10px;
+        border: 1px solid rgba(148, 163, 184, 0.5);
+        padding: 0.45rem 0.6rem;
+        color: var(--text-main);
+        font-size: 0.9rem;
+      }
+
+      input[type="text"]:focus,
+      input[type="number"]:focus,
+      input[type="file"]:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-color: var(--accent);
+      }
+
+      .screen-time-form {
+        margin-top: 0.2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        max-width: 260px;
+      }
+
+      .screen-time-status {
+        margin: 0.3rem 0 0;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+      }
+
+      .screen-time-locked {
+        color: var(--danger);
+        font-weight: 500;
+      }
+
+      .avatar-column {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+
+      .avatar-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--text-muted);
+        margin-bottom: 0.2rem;
+      }
+
+      .avatar-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+      }
+
+      .avatar-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.3rem 0.6rem;
+        background: rgba(15, 23, 42, 0.9);
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        color: var(--text-main);
+      }
+
+      .avatar-pill-selected {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+      }
+
+      .avatar-emoji {
+        font-size: 1.1rem;
+      }
+
+      .avatar-label {
+        font-size: 0.78rem;
+      }
+
+      .avatar-upload-wrapper input[type="file"] {
+        font-size: 0.8rem;
+      }
+
+      .avatar-preview {
+        margin-top: 0.3rem;
+      }
+
+      .avatar-preview-box {
+        width: 70px;
+        height: 70px;
+        border-radius: 18px;
+        border: 1px dashed rgba(148, 163, 184, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #020617;
+        overflow: hidden;
+      }
+
+      .avatar-preview-box img {
+        max-width: 100%;
+        max-height: 100%;
+        display: block;
+      }
+
+      .avatar-preview-emoji {
+        font-size: 2.2rem;
+      }
+
+      .avatar-placeholder {
+        font-size: 1.9rem;
+        color: var(--text-muted);
+      }
+
+      .profile-note {
+        margin: 0.2rem 0 0;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+
+      .performance-section p {
+        margin: 0.2rem 0 0;
+        font-size: 0.95rem;
+        color: var(--text-main);
+      }
+
+      .arcade-blurb {
+        margin-top: 0;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+      }
+
+      .carousel-wrapper {
+        margin-top: 0.8rem;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.6rem;
+        align-items: stretch;
+      }
+
+      .carousel-nav {
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.7);
+        padding: 0.4rem 0.7rem;
+        background: rgba(15, 23, 42, 0.9);
+        color: var(--text-main);
+        cursor: pointer;
+      }
+
+      .carousel-nav:hover {
+        background: rgba(15, 23, 42, 0.95);
+      }
+
+      .game-card {
+        border-radius: var(--radius-lg);
+        background: radial-gradient(circle at top left, #022c22, #020617 55%);
+        border: 1px solid rgba(34, 197, 94, 0.4);
+        padding: 1rem;
+        box-shadow: var(--shadow-soft);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .game-pill {
+        margin: 0 0 0.3rem;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--accent);
+      }
+
+      .game-card h3 {
+        margin: 0 0 0.2rem;
+      }
+
+      .game-tagline {
+        margin: 0 0 0.4rem;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+      }
+
+      .game-meta {
+        margin: 0 0 0.5rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+      }
+
+      .skills-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        margin-bottom: 0.8rem;
+      }
+
+      .skill-chip {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.55rem;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid rgba(148, 163, 184, 0.6);
+      }
+
+      .game-play-button {
+        align-self: flex-start;
+      }
+
+      .game-section {
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+      }
+
+      .game-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.6rem;
+        align-items: center;
+      }
+
+      .game-locked-note {
+        margin: 0;
+        color: var(--danger);
+        font-size: 0.9rem;
+      }
+
+      .game-inner {
+        margin-top: 0.4rem;
+      }
+
+      .game-panel {
+        border-radius: var(--radius-lg);
+        background: radial-gradient(circle at top, #020617, #020617 65%);
+        padding: 0.8rem 1rem;
+        border: 1px solid rgba(148, 163, 184, 0.4);
+      }
+
+      .game-instructions {
+        margin-top: 0;
+        margin-bottom: 0.7rem;
+        font-size: 0.9rem;
+        color: var(--text-main);
+      }
+
+      .game-meta-small {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+
+      .game-success-message {
+        margin-top: 0.5rem;
+        color: var(--accent);
+        font-weight: 500;
+      }
+
+      .memory-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.4rem;
+        margin-bottom: 0.4rem;
+      }
+
+      .memory-card {
+        border-radius: var(--radius-sm);
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        background: rgba(15, 23, 42, 0.9);
+        height: 60px;
+        font-size: 1.6rem;
+        cursor: pointer;
+      }
+
+      .memory-card-flipped {
+        background: rgba(22, 163, 74, 0.15);
+      }
+
+      .dig-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.4rem;
+        margin-bottom: 0.4rem;
+      }
+
+      .dig-cell {
+        border-radius: var(--radius-sm);
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        height: 64px;
+        font-size: 1.5rem;
+        cursor: pointer;
+        background: #1e293b;
+      }
+
+      .dig-cell-dug {
+        background: #020617;
+      }
+
+      .dig-cell-treasure {
+        border-color: var(--accent);
+        background: rgba(22, 163, 74, 0.18);
+      }
+
+      .boots-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-bottom: 0.3rem;
+      }
+
+      .boots-cell {
+        flex: 1 1 calc(33.3% - 0.4rem);
+        min-width: 90px;
+        border-radius: var(--radius-sm);
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        background: #020617;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.15rem;
+        font-size: 1.3rem;
+        cursor: pointer;
+      }
+
+      .boots-cell-selected {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+      }
+
+      .boots-color-dot {
+        font-size: 1rem;
+      }
+
+      .boots-target {
+        font-size: 1.3rem;
+      }
+
+      .planes-area {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-bottom: 0.4rem;
+      }
+
+      .plane {
+        border-radius: 999px;
+        padding: 0.4rem 0.8rem;
+        border: 1px solid rgba(148, 163, 184, 0.7);
+        background: rgba(15, 23, 42, 0.9);
+        font-size: 1.2rem;
+        cursor: pointer;
+        animation: floatPlane 2.2s ease-in-out infinite alternate;
+      }
+
+      .plane-caught {
+        opacity: 0.4;
+        animation: none;
+      }
+
+      @keyframes floatPlane {
+        from {
+          transform: translateY(0px) translateX(0px);
+        }
+        to {
+          transform: translateY(-6px) translateX(4px);
+        }
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        z-index: 50;
+      }
+
+      .modal-content {
+        max-width: 520px;
+        width: 100%;
+        border-radius: var(--radius-lg);
+        background: #020617;
+        border: 1px solid rgba(148, 163, 184, 0.8);
+        padding: 1.2rem 1.4rem;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .modal-content h2 {
+        margin-top: 0;
+      }
+
+      .modal-content ul {
+        margin-left: 1.2rem;
+        padding-left: 0;
+        font-size: 0.9rem;
+        color: var(--text-main);
+      }
+
+      .modal-content li {
+        margin-bottom: 0.3rem;
+      }
+
+      .app-footer {
+        margin-top: auto;
+        padding: 0.8rem 0.4rem 0.2rem;
+        text-align: center;
+        font-size: 0.85rem;
+        color: #bbf7d0;
+      }
+
+      .app-footer a {
+        color: #bbf7d0;
+        text-decoration: underline;
+        text-decoration-style: dotted;
+      }
+
+      .app-footer a:hover {
+        text-decoration-style: solid;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" aria-label="All Four You Kids Arcade Root"></div>
+    <!-- Vite expects an entry module script so it can inject and serve the app -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
