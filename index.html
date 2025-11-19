@@ -11,22 +11,22 @@
     <!-- Basic, responsive, accessible-friendly styles -->
     <style>
       :root {
-        /* Toddler-friendly pastel palette with strong contrast where needed */
+        /* Child-friendly pastel rainbow palette */
         color-scheme: light dark;
-        --bg: #f0fbf7; /* soft mint */
-        --bg-soft: #e6fff8;
+        --bg: #fff7f0; /* soft peach */
+        --bg-soft: #fff1e6;
         --card-bg: #ffffff;
-        --card-border: rgba(34, 197, 94, 0.18);
-        --accent: #34d399; /* bright, friendly green */
-        --accent-soft: rgba(52, 211, 153, 0.14);
-        --accent-strong: #10b981;
-        --text-main: #064e3b; /* deep green for text */
-        --text-muted: #2b6b5b;
+        --card-border: rgba(255, 148, 114, 0.18);
+        --accent: #ff7a8a; /* coral */
+        --accent-soft: rgba(255, 122, 138, 0.12);
+        --accent-strong: #ff4d6d;
+        --text-main: #12263a; /* deep navy for text */
+        --text-muted: #425261;
         --danger: #ff6b6b;
         --radius-lg: 18px;
         --radius-sm: 12px;
-        --shadow-soft: 0 18px 40px rgba(6, 78, 59, 0.06);
-        --shadow-subtle: 0 8px 20px rgba(6, 78, 59, 0.05);
+        --shadow-soft: 0 18px 40px rgba(18, 38, 58, 0.06);
+        --shadow-subtle: 0 8px 20px rgba(18, 38, 58, 0.05);
       }
 
       * {
@@ -38,9 +38,9 @@
         margin: 0;
         padding: 0;
         height: 100%;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-          sans-serif;
-        background: radial-gradient(circle at top, #064e3b, #020617 55%);
+        font-family: "Comic Sans MS", "Trebuchet MS", system-ui, -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: radial-gradient(circle at top left, var(--bg), var(--bg-soft));
         color: var(--text-main);
       }
 
@@ -457,6 +457,79 @@
         outline: 3px solid var(--accent);
         outline-offset: 2px;
       }
+
+      /* Music tile styles (big emoji tiles for toddlers) */
+      .music-tile {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 12px;
+        background: rgba(18, 38, 58, 0.06);
+        border: 1px solid rgba(18, 38, 58, 0.06);
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .music-tile-selected {
+        background: linear-gradient(90deg, var(--accent-soft), rgba(255,255,255,0.04));
+        box-shadow: 0 8px 24px rgba(255, 122, 138, 0.08);
+        border-color: var(--accent);
+      }
+
+      input[type="range"] {
+        -webkit-appearance: none;
+        height: 8px;
+        background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+        border-radius: 999px;
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: white;
+        border: 3px solid var(--accent-strong);
+      }
+
+      /* Intro banner carousel styles */
+      .intro-banner .intro-content {
+        background: linear-gradient(180deg, #fff, #fff8f6);
+        color: var(--text-main);
+      }
+
+      .intro-carousel {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .intro-slide {
+        width: 84px;
+        height: 84px;
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: rgba(18, 38, 58, 0.06);
+        transform: scale(0.9) translateY(6px);
+        opacity: 0.6;
+        transition: transform 280ms ease, opacity 280ms ease, box-shadow 280ms ease;
+      }
+
+      .intro-slide.active {
+        transform: scale(1.08) translateY(0);
+        opacity: 1;
+        box-shadow: 0 12px 30px rgba(255, 122, 138, 0.12);
+        background: linear-gradient(180deg, rgba(255,255,255,0.9), var(--bg-soft));
+      }
+
+      .intro-emoji { font-size: 2.2rem }
+      .intro-title { font-size: 0.78rem; margin-top: 6px; color: var(--text-muted) }
 
       .game-locked-note {
         margin: 0;

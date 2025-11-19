@@ -13,6 +13,11 @@ type GameResult = {
   score: number;
   attempts: number;
   timestamp: number;
+  goals?: {
+    montessori: string[];
+    waldorf: string[];
+    intelligences: string[];
+  };
 };
 
 type ScreenTimeState = {
@@ -36,6 +41,9 @@ const GAME_METADATA: Record<
     skills: string[];
     difficulty: "Easy" | "Medium";
     category: "Memory" | "Problem Solving" | "Attention & Coordination";
+    montessoriGoals?: string[];
+    waldorfGoals?: string[];
+    intelligences?: string[];
   }
 > = {
   memory: {
@@ -44,6 +52,9 @@ const GAME_METADATA: Record<
     skills: ["Memory", "Focus", "Pattern spotting"],
     difficulty: "Medium",
     category: "Memory",
+    montessoriGoals: ["Concentration", "Order", "Refined visual discrimination"],
+    waldorfGoals: ["Imagination with visual motifs", "Rhythmic practice"],
+    intelligences: ["Visual-Spatial", "Logical-Mathematical"],
   },
   digging: {
     name: "Treasure Dig",
@@ -51,6 +62,9 @@ const GAME_METADATA: Record<
     skills: ["Patience", "Guessing", "Basic strategy"],
     difficulty: "Easy",
     category: "Problem Solving",
+    montessoriGoals: ["Sensorial exploration", "Cause & effect"],
+    waldorfGoals: ["Nature play", "Story-based discovery"],
+    intelligences: ["Bodily-Kinesthetic", "Naturalist"],
   },
   boots: {
     name: "Isabelle’s Boots",
@@ -58,6 +72,9 @@ const GAME_METADATA: Record<
     skills: ["Color matching", "Attention to detail"],
     difficulty: "Easy",
     category: "Attention & Coordination",
+    montessoriGoals: ["Color discrimination", "Practical life matching"],
+    waldorfGoals: ["Artful color play", "Rhythmic repetition"],
+    intelligences: ["Visual-Spatial", "Interpersonal"],
   },
   airplanes: {
     name: "Airplane Catch",
@@ -65,6 +82,9 @@ const GAME_METADATA: Record<
     skills: ["Hand-eye coordination", "Reaction time"],
     difficulty: "Easy",
     category: "Attention & Coordination",
+    montessoriGoals: ["Gross motor timing", "Hand-eye coordination"],
+    waldorfGoals: ["Imaginative movement", "Narrative play"],
+    intelligences: ["Bodily-Kinesthetic", "Spatial"],
   },
 };
 
@@ -79,13 +99,13 @@ const soundPaths: Record<string, string> = {
 };
 
 // Background music choices. Place matching .mp3 files in `public/music/`.
-const MUSIC_TRACKS: { key: string; label: string; path: string }[] = [
-  { key: "silent", label: "Silent", path: "" },
-  { key: "tides", label: "Tides & Smiles", path: `${_BASE}music/tides-and-smiles.mp3` },
-  { key: "happy", label: "Happy Day", path: `${_BASE}music/happy-day.mp3` },
-  { key: "playful", label: "Playful", path: `${_BASE}music/playful.mp3` },
-  { key: "chill", label: "Chill Pulse", path: `${_BASE}music/chill-pulse.mp3` },
-  { key: "love", label: "Love in Japan", path: `${_BASE}music/love-in-japan.mp3` },
+const MUSIC_TRACKS: { key: string; label: string; emoji: string; path: string }[] = [
+  { key: "silent", label: "Silent", emoji: "🔇", path: "" },
+  { key: "tides", label: "Tides", emoji: "🌊", path: `${_BASE}music/tides-and-smiles.mp3` },
+  { key: "happy", label: "Happy", emoji: "☀️", path: `${_BASE}music/happy-day.mp3` },
+  { key: "playful", label: "Playful", emoji: "🎈", path: `${_BASE}music/playful.mp3` },
+  { key: "chill", label: "Chill", emoji: "🌴", path: `${_BASE}music/chill-pulse.mp3` },
+  { key: "love", label: "Love", emoji: "💖", path: `${_BASE}music/love-in-japan.mp3` },
 ];
 
 function playSound(key: keyof typeof soundPaths) {
@@ -112,7 +132,29 @@ const App: React.FC = () => {
     gameId: GameId | null;
     visible: boolean;
   }>({ gameId: null, visible: false });
-  const [musicKey, setMusicKey] = useState<string>("silent");
+  const [musicKey, setMusicKey] = useState<string>(() => {
+    try {
+      return localStorage.getItem("musicKey") || "silent";
+    } catch (e) {
+      return "silent";
+    }
+  });
+  const [musicVolume, setMusicVolume] = useState<number>(() => {
+    try {
+      const v = localStorage.getItem("musicVolume");
+      return v ? Number(v) : 0.45;
+    } catch (e) {
+      return 0.45;
+    }
+  });
+  const [rememberMusic, setRememberMusic] = useState<boolean>(() => {
+    try {
+      const v = localStorage.getItem("rememberMusic");
+      return v === null ? true : v === "1";
+    } catch (e) {
+      return true;
+    }
+  });
   const [isMusicPlaying, setIsMusicPlaying] = useState<boolean>(false);
   const musicRef = useRef<HTMLAudioElement | null>(null);
 
@@ -231,10 +273,15 @@ const App: React.FC = () => {
     screenTime.limitMinutes !== null &&
     (!screenTime.isActive || screenTime.remainingSeconds <= 0);
 
-  const recordGameResult = (gameId: GameId, score: number, attempts: number) => {
+  const recordGameResult = (
+    gameId: GameId,
+    score: number,
+    attempts: number,
+    goals?: { montessori: string[]; waldorf: string[]; intelligences: string[] }
+  ) => {
     setGameResults((prev) => [
       ...prev,
-      { gameId, score, attempts, timestamp: Date.now() },
+      { gameId, score, attempts, timestamp: Date.now(), goals },
     ]);
   };
 
@@ -281,7 +328,7 @@ const App: React.FC = () => {
 
     const audio = new Audio(track.path);
     audio.loop = true;
-    audio.volume = 0.45;
+    audio.volume = musicVolume;
     musicRef.current = audio;
     if (autoplay) {
       audio.play().then(() => setIsMusicPlaying(true)).catch(() => setIsMusicPlaying(false));
@@ -315,6 +362,26 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // apply persisted music choice on mount
+  useEffect(() => {
+    if (musicKey && musicKey !== "silent") {
+      setBackgroundMusic(musicKey, false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // when volume changes, update current audio and persist
+  useEffect(() => {
+    if (musicRef.current) {
+      try {
+        musicRef.current.volume = musicVolume;
+      } catch (e) {}
+    }
+    try {
+      if (rememberMusic) localStorage.setItem("musicVolume", String(musicVolume));
+    } catch (e) {}
+  }, [musicVolume, rememberMusic]);
+
   return (
     <div className={`app-root ${selectedGame ? "in-game" : ""}`}>
       <header className="app-header" aria-label="Tripp's Tricky Tetraverse">
@@ -333,34 +400,77 @@ const App: React.FC = () => {
         </div>
         <div className="header-right">
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span aria-hidden style={{ fontSize: '1rem' }}>🎶</span>
-              <select
-                aria-label="Background music"
-                value={musicKey}
-                onChange={(e) => {
-                  const k = e.currentTarget.value;
-                  setBackgroundMusic(k, true);
-                }}
-                style={{ padding: '6px 8px', borderRadius: 8, fontWeight: 700 }}
-              >
-                {MUSIC_TRACKS.map((t) => (
-                  <option key={t.key} value={t.key}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => toggleMusicPlay()}
-              aria-pressed={isMusicPlaying}
-              aria-label={isMusicPlaying ? 'Pause background music' : 'Play background music'}
-              title={isMusicPlaying ? 'Pause music' : 'Play music'}
-            >
-              {isMusicPlaying ? '⏸️' : '▶️'}
-            </button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {MUSIC_TRACKS.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  className={`music-tile ${musicKey === t.key ? 'music-tile-selected' : ''}`}
+                  onClick={() => {
+                    playSound('click');
+                    setMusicKey(t.key);
+                    setBackgroundMusic(t.key, true);
+                    try {
+                      if (rememberMusic) localStorage.setItem('musicKey', t.key);
+                    } catch (e) {}
+                  }}
+                  aria-pressed={musicKey === t.key}
+                  aria-label={`Choose ${t.label} music`}
+                >
+                  <span aria-hidden style={{ fontSize: '1.1rem' }}>{t.emoji}</span>
+                  <span style={{ fontSize: '0.8rem', marginLeft: 6 }}>{t.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginLeft: 6, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => toggleMusicPlay()}
+                  aria-pressed={isMusicPlaying}
+                  aria-label={isMusicPlaying ? 'Pause background music' : 'Play background music'}
+                  title={isMusicPlaying ? 'Pause music' : 'Play music'}
+                >
+                  {isMusicPlaying ? '⏸️' : '▶️'}
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={Math.round(musicVolume * 100)}
+                  onChange={(e) => {
+                    const v = Number(e.currentTarget.value) / 100;
+                    setMusicVolume(v);
+                    if (musicRef.current) musicRef.current.volume = v;
+                    try {
+                      if (rememberMusic) localStorage.setItem('musicVolume', String(v));
+                    } catch (e) {}
+                  }}
+                  aria-label="Music volume"
+                  style={{ width: 120 }}
+                />
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem' }}>
+                <input
+                  type="checkbox"
+                  checked={rememberMusic}
+                  onChange={(e) => {
+                    const v = e.currentTarget.checked;
+                    setRememberMusic(v);
+                    try {
+                      localStorage.setItem('rememberMusic', v ? '1' : '0');
+                      if (!v) {
+                        localStorage.removeItem('musicKey');
+                        localStorage.removeItem('musicVolume');
+                      }
+                    } catch (e) {}
+                  }}
+                />
+                Remember
+              </label>
+            </div>
           </div>
           <button
             type="button"
@@ -724,7 +834,12 @@ const ArcadeView: React.FC<ArcadeViewProps> = ({ canPlay, onSelectGame }) => {
 interface GameViewProps {
   gameId: GameId;
   onBackToArcade: () => void;
-  onGameResult: (gameId: GameId, score: number, attempts: number) => void;
+  onGameResult: (
+    gameId: GameId,
+    score: number,
+    attempts: number,
+    goals?: { montessori: string[]; waldorf: string[]; intelligences: string[] }
+  ) => void;
   canPlay: boolean;
   onRequestTutorial?: () => void;
 }
@@ -816,28 +931,64 @@ const GameView: React.FC<GameViewProps> = ({
           {gameId === "memory" && (
             <MemoryGame
               onFinish={(score, attempts) =>
-                onGameResult("memory", score, attempts)
+                onGameResult(
+                  "memory",
+                  score,
+                  attempts,
+                  {
+                    montessori: meta.montessoriGoals ?? [],
+                    waldorf: meta.waldorfGoals ?? [],
+                    intelligences: meta.intelligences ?? [],
+                  }
+                )
               }
             />
           )}
           {gameId === "digging" && (
             <DiggingGame
               onFinish={(score, attempts) =>
-                onGameResult("digging", score, attempts)
+                onGameResult(
+                  "digging",
+                  score,
+                  attempts,
+                  {
+                    montessori: meta.montessoriGoals ?? [],
+                    waldorf: meta.waldorfGoals ?? [],
+                    intelligences: meta.intelligences ?? [],
+                  }
+                )
               }
             />
           )}
           {gameId === "boots" && (
             <BootsGame
               onFinish={(score, attempts) =>
-                onGameResult("boots", score, attempts)
+                onGameResult(
+                  "boots",
+                  score,
+                  attempts,
+                  {
+                    montessori: meta.montessoriGoals ?? [],
+                    waldorf: meta.waldorfGoals ?? [],
+                    intelligences: meta.intelligences ?? [],
+                  }
+                )
               }
             />
           )}
           {gameId === "airplanes" && (
             <AirplanesGame
               onFinish={(score, attempts) =>
-                onGameResult("airplanes", score, attempts)
+                onGameResult(
+                  "airplanes",
+                  score,
+                  attempts,
+                  {
+                    montessori: meta.montessoriGoals ?? [],
+                    waldorf: meta.waldorfGoals ?? [],
+                    intelligences: meta.intelligences ?? [],
+                  }
+                )
               }
             />
           )}
@@ -1203,28 +1354,40 @@ interface IntroBannerProps {
 }
 
 const IntroBanner: React.FC<IntroBannerProps> = ({ onBegin }) => {
+  const slides = [
+    { emoji: '🧠', title: 'Match the Pairs' },
+    { emoji: '💎', title: 'Treasure Dig' },
+    { emoji: '👢', title: 'Isabelle\'s Boots' },
+    { emoji: '✈️', title: 'Airplane Catch' },
+  ];
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setIdx((i) => (i + 1) % slides.length), 900);
+    return () => clearInterval(t);
+  }, []);
+
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal-content" style={{ textAlign: "center" }}>
-        <h1 style={{ fontSize: "1.8rem", margin: "0 0 0.5rem" }}>
-          🎉 Tripp's Tricky Tetraverse 🎉
-        </h1>
-        <p style={{ color: "var(--text-muted)", marginBottom: "1rem" }}>
-          A small, gentle arcade made for little hands and big imaginations.
-        </p>
-        <div style={{ margin: "1rem 0" }}>
-          <button
-            className="primary-button"
-            onClick={onBegin}
-            style={{ fontSize: "1rem" }}
-          >
+    <div className="modal-backdrop intro-banner" role="dialog" aria-modal="true">
+      <div className="modal-content intro-content" style={{ textAlign: 'center' }}>
+        <div className="intro-carousel" aria-hidden>
+          {slides.map((s, i) => (
+            <div key={s.title} className={`intro-slide ${i === idx ? 'active' : ''}`}>
+              <div className="intro-emoji" aria-hidden>
+                {s.emoji}
+              </div>
+              <div className="intro-title">{s.title}</div>
+            </div>
+          ))}
+        </div>
+        <h1 style={{ fontSize: '1.6rem', margin: '0.8rem 0 0.2rem' }}>🎉 Tripp's Tricky Tetraverse</h1>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '0.8rem' }}>Tiny games, big smiles.</p>
+        <div style={{ margin: '0.6rem 0' }}>
+          <button className="primary-button" onClick={onBegin} style={{ fontSize: '1rem' }}>
             Tap to Begin
           </button>
         </div>
-        <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-          Parents: Tap <strong>For Parents</strong> to read about safety and
-          screen time tools.
-        </p>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Parents: Tap <strong>For Parents</strong></p>
       </div>
     </div>
   );
