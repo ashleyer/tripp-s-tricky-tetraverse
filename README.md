@@ -187,3 +187,29 @@ all-four-you-arcade/
    └─ App.tsx          
 ____
 Built with ❤️ in Boston by [@ashleyer](https://github.com/ashleyer).
+
+## Music attributions
+
+Background music tracks used (place matching `.mp3` files in `public/music/`):
+
+- **Tides & Smiles** — Moavii
+  - Source: https://freetouse.com/music
+  - Attribution: Music track: Tides & Smiles by Moavii — Copyright Free Background Music
+
+- **Happy Day** — Aylex
+  - Source: https://freetouse.com/music
+  - Attribution: Music track: Happy Day by Aylex — No Copyright Vlog Music for Videos
+
+- **Playful** — Chill Pulse
+  - Source: https://freetouse.com/music
+  - Attribution: Music track: Playful by Chill Pulse — Copyright Free Music for Video
+
+- **Chill Pulse** (track) — Chill Pulse
+  - Source: https://freetouse.com/music
+  - Attribution: Music track provided via Free to Use music collections
+
+- **Love in Japan** — Milky Wayvers
+  - Source: https://freetouse.com/music
+  - Attribution: Music track: Love in Japan by Milky Wayvers — Free To Use Music for Video
+
+When publishing, ensure licensing and attribution requirements from each source are followed.

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 type GameId = "memory" | "digging" | "boots" | "airplanes";
 
@@ -78,6 +78,16 @@ const soundPaths: Record<string, string> = {
   fail: `${_BASE}sounds/fail.mp3`,
 };
 
+// Background music choices. Place matching .mp3 files in `public/music/`.
+const MUSIC_TRACKS: { key: string; label: string; path: string }[] = [
+  { key: "silent", label: "Silent", path: "" },
+  { key: "tides", label: "Tides & Smiles", path: `${_BASE}music/tides-and-smiles.mp3` },
+  { key: "happy", label: "Happy Day", path: `${_BASE}music/happy-day.mp3` },
+  { key: "playful", label: "Playful", path: `${_BASE}music/playful.mp3` },
+  { key: "chill", label: "Chill Pulse", path: `${_BASE}music/chill-pulse.mp3` },
+  { key: "love", label: "Love in Japan", path: `${_BASE}music/love-in-japan.mp3` },
+];
+
 function playSound(key: keyof typeof soundPaths) {
   const path = soundPaths[key];
   const audio = new Audio(path);
@@ -95,6 +105,16 @@ const App: React.FC = () => {
   const [selectedGame, setSelectedGame] = useState<GameId | null>(null);
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
   const [showParentOverlay, setShowParentOverlay] = useState<boolean>(true);
+  const [showPlayersOverlay, setShowPlayersOverlay] = useState<boolean>(false);
+  const [showAboutOverlay, setShowAboutOverlay] = useState<boolean>(false);
+  const [showIntro, setShowIntro] = useState<boolean>(true);
+  const [showTutorial, setShowTutorial] = useState<{
+    gameId: GameId | null;
+    visible: boolean;
+  }>({ gameId: null, visible: false });
+  const [musicKey, setMusicKey] = useState<string>("silent");
+  const [isMusicPlaying, setIsMusicPlaying] = useState<boolean>(false);
+  const musicRef = useRef<HTMLAudioElement | null>(null);
 
   const [screenTime, setScreenTime] = useState<ScreenTimeState>({
     limitMinutes: null,
@@ -222,19 +242,126 @@ const App: React.FC = () => {
 
   const showArcade = !selectedGame;
 
+  // Handle selecting a game: show tutorial first time, otherwise enter game
+  const handleSelectGame = (gameId: GameId) => {
+    if (!canPlay) return;
+    playSound("click");
+    const key = `seenTutorial:${gameId}`;
+    if (!localStorage.getItem(key)) {
+      setShowTutorial({ gameId, visible: true });
+      return;
+    }
+    setSelectedGame(gameId);
+  };
+
+  // Background music control helpers
+  const setBackgroundMusic = (key: string, autoplay = true) => {
+    // stop previous
+    if (musicRef.current) {
+      try {
+        musicRef.current.pause();
+        musicRef.current.currentTime = 0;
+      } catch (e) {
+        // ignore
+      }
+      musicRef.current = null;
+    }
+
+    setMusicKey(key);
+    if (key === "silent") {
+      setIsMusicPlaying(false);
+      return;
+    }
+
+    const track = MUSIC_TRACKS.find((t) => t.key === key);
+    if (!track || !track.path) {
+      setIsMusicPlaying(false);
+      return;
+    }
+
+    const audio = new Audio(track.path);
+    audio.loop = true;
+    audio.volume = 0.45;
+    musicRef.current = audio;
+    if (autoplay) {
+      audio.play().then(() => setIsMusicPlaying(true)).catch(() => setIsMusicPlaying(false));
+    }
+  };
+
+  const toggleMusicPlay = () => {
+    if (!musicRef.current) {
+      if (musicKey && musicKey !== "silent") {
+        setBackgroundMusic(musicKey, true);
+      }
+      return;
+    }
+    if (isMusicPlaying) {
+      musicRef.current.pause();
+      setIsMusicPlaying(false);
+    } else {
+      musicRef.current.play().then(() => setIsMusicPlaying(true)).catch(() => setIsMusicPlaying(false));
+    }
+  };
+
+  useEffect(() => {
+    // clean up audio on unmount
+    return () => {
+      if (musicRef.current) {
+        try {
+          musicRef.current.pause();
+        } catch (e) {}
+        musicRef.current = null;
+      }
+    };
+  }, []);
+
   return (
-    <div className="app-root">
-      <header className="app-header" aria-label="All Four You Kids Arcade">
+    <div className={`app-root ${selectedGame ? "in-game" : ""}`}>
+      <header className="app-header" aria-label="Tripp's Tricky Tetraverse">
         <div className="header-main">
-          <h1 className="app-title" aria-label="All Four You Kids Arcade">
-            🎮 All Four You Kids’ Arcade
-          </h1>
-          <p className="app-subtitle">
-            Safe, simple, smile-first mini-games for kids (with tools just for
-            grown-ups).
-          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span className="app-title-emoji" aria-hidden>
+              🧸
+            </span>
+            <div>
+              <h1 className="app-title" aria-label="Tripp's Tricky Tetraverse">
+                Tripp's Tricky Tetraverse
+              </h1>
+              <p className="app-subtitle">an All Four You Arcade</p>
+            </div>
+          </div>
         </div>
         <div className="header-right">
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span aria-hidden style={{ fontSize: '1rem' }}>🎶</span>
+              <select
+                aria-label="Background music"
+                value={musicKey}
+                onChange={(e) => {
+                  const k = e.currentTarget.value;
+                  setBackgroundMusic(k, true);
+                }}
+                style={{ padding: '6px 8px', borderRadius: 8, fontWeight: 700 }}
+              >
+                {MUSIC_TRACKS.map((t) => (
+                  <option key={t.key} value={t.key}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => toggleMusicPlay()}
+              aria-pressed={isMusicPlaying}
+              aria-label={isMusicPlaying ? 'Pause background music' : 'Play background music'}
+              title={isMusicPlaying ? 'Pause music' : 'Play music'}
+            >
+              {isMusicPlaying ? '⏸️' : '▶️'}
+            </button>
+          </div>
           <button
             type="button"
             className="parent-button"
@@ -243,8 +370,36 @@ const App: React.FC = () => {
           >
             For Parents
           </button>
+          <button
+            type="button"
+            className="parent-button"
+            onClick={() => setShowPlayersOverlay(true)}
+            aria-label="Players"
+            style={{ marginLeft: 8 }}
+          >
+            Players
+          </button>
+          <button
+            type="button"
+            className="parent-button"
+            onClick={() => setShowAboutOverlay(true)}
+            aria-label="About this app"
+            style={{ marginLeft: 8 }}
+          >
+            About
+          </button>
         </div>
       </header>
+
+      {showIntro && (
+        <IntroBanner
+          onBegin={() => {
+            setShowIntro(false);
+            // close parent overlay if it's open
+            setShowParentOverlay(false);
+          }}
+        />
+      )}
 
       {/* Player Profile Section */}
       <section className="profile-section" aria-label="Player profile">
@@ -414,26 +569,54 @@ const App: React.FC = () => {
 
       {/* Arcade vs specific game */}
       {showArcade ? (
-        <ArcadeView
-          canPlay={canPlay}
-          onSelectGame={(gameId) => {
-            if (!canPlay) return;
-            playSound("click");
-            setSelectedGame(gameId);
-          }}
-        />
+        <ArcadeView canPlay={canPlay} onSelectGame={handleSelectGame} />
       ) : selectedGame ? (
         <GameView
           gameId={selectedGame}
           onBackToArcade={() => setSelectedGame(null)}
           onGameResult={recordGameResult}
           canPlay={canPlay}
+          onRequestTutorial={() =>
+            setShowTutorial({ gameId: selectedGame, visible: true })
+          }
         />
       ) : null}
+
+      {/* Tutorials: show before entering the actual game */}
+      {showTutorial.visible && showTutorial.gameId && (
+        <TutorialModal
+          gameId={showTutorial.gameId}
+          onClose={() => {
+            const key = `seenTutorial:${showTutorial.gameId}`;
+            try {
+              localStorage.setItem(key, "1");
+            } catch (e) {
+              // ignore storage errors
+            }
+            setShowTutorial({ gameId: null, visible: false });
+            setSelectedGame(showTutorial.gameId);
+          }}
+        />
+      )}
 
       {/* Parent overlay */}
       {showParentOverlay && (
         <ParentOverlay onClose={() => setShowParentOverlay(false)} />
+      )}
+
+      {showPlayersOverlay && (
+        <PlayersOverlay
+          player={player}
+          onClose={() => setShowPlayersOverlay(false)}
+          onSave={(p) => {
+            setPlayer(p);
+            setShowPlayersOverlay(false);
+          }}
+        />
+      )}
+
+      {showAboutOverlay && (
+        <AboutOverlay onClose={() => setShowAboutOverlay(false)} />
       )}
 
       <footer className="app-footer">
@@ -543,6 +726,7 @@ interface GameViewProps {
   onBackToArcade: () => void;
   onGameResult: (gameId: GameId, score: number, attempts: number) => void;
   canPlay: boolean;
+  onRequestTutorial?: () => void;
 }
 
 const GameView: React.FC<GameViewProps> = ({
@@ -550,22 +734,62 @@ const GameView: React.FC<GameViewProps> = ({
   onBackToArcade,
   onGameResult,
   canPlay,
+  onRequestTutorial,
 }) => {
   const meta = GAME_METADATA[gameId];
+  const [paused, setPaused] = useState(false);
 
   return (
     <section className="game-section" aria-label={meta.name}>
       <div className="game-header">
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={onBackToArcade}
-        >
-          ← Back to Arcade
-        </button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            type="button"
+            className="game-control-btn"
+            onClick={onBackToArcade}
+            aria-label="Back to arcade"
+            title="Back"
+          >
+            ⬅️
+          </button>
+        </div>
+
         <div>
-          <h2>{meta.name}</h2>
+          <h2>{meta.name} <span aria-hidden> {meta.category === 'Memory' ? '🧠' : meta.category === 'Problem Solving' ? '🪄' : '✈️'}</span></h2>
           <p className="game-tagline">{meta.tagline}</p>
+        </div>
+
+        <div className="game-controls">
+          <button
+            type="button"
+            className="game-control-btn"
+            onClick={() => setPaused((p) => !p)}
+            aria-pressed={paused}
+            aria-label={paused ? 'Resume game' : 'Pause game'}
+            title={paused ? 'Resume' : 'Pause'}
+          >
+            {paused ? '▶️' : '⏸️'}
+          </button>
+
+          <button
+            type="button"
+            className="game-control-btn"
+            onClick={() => onRequestTutorial && onRequestTutorial()}
+            aria-label="Show directions"
+            title="Directions"
+          >
+            💡
+          </button>
+
+          <button
+            type="button"
+            className="game-control-btn"
+            onClick={onBackToArcade}
+            aria-label="Quit to main carousel"
+            title="Quit"
+          >
+            🏁
+          </button>
         </div>
       </div>
 
@@ -577,7 +801,18 @@ const GameView: React.FC<GameViewProps> = ({
       )}
 
       {canPlay && (
-        <div className="game-inner">
+        <div className={`game-inner ${paused ? 'paused' : ''}`}>
+          {paused && (
+            <div className="pause-overlay" role="status" aria-live="polite" style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <div style={{background:'rgba(255,255,255,0.9)',padding:20,borderRadius:12,boxShadow:'var(--shadow-subtle)'}}>
+                <p style={{margin:0,fontSize:'1.1rem',color:'var(--text-main)'}}>Paused</p>
+                <div style={{marginTop:8,display:'flex',gap:8,justifyContent:'center'}}>
+                  <button className="primary-button" onClick={() => setPaused(false)}>Resume</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {gameId === "memory" && (
             <MemoryGame
               onFinish={(score, attempts) =>
@@ -650,14 +885,17 @@ const MemoryGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
       setAttempts((prev) => prev + 1);
       if (cards[a] === cards[b]) {
         playSound("success");
-        setMatchedIndexes((prev) => [...prev, a, b]);
+        setMatchedIndexes((prev) => {
+          const next = [...prev, a, b];
+          // check finish condition using the updated array
+          if (next.length === cards.length) {
+            setFinished(true);
+            const score = 100 - (attempts + 1 - cards.length / 2) * 10;
+            onFinish(Math.max(10, score), attempts + 1);
+          }
+          return next;
+        });
         setFlippedIndexes([]);
-
-        if (matchedIndexes.length + 2 === cards.length) {
-          setFinished(true);
-          const score = 100 - (attempts + 1 - cards.length / 2) * 10;
-          onFinish(Math.max(10, score), attempts + 1);
-        }
       } else {
         playSound("fail");
         setTimeout(() => setFlippedIndexes([]), 800);
@@ -954,6 +1192,189 @@ const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose }) => {
         >
           Got it – let’s play
         </button>
+      </div>
+    </div>
+  );
+};
+
+// --- Intro Banner ---
+interface IntroBannerProps {
+  onBegin: () => void;
+}
+
+const IntroBanner: React.FC<IntroBannerProps> = ({ onBegin }) => {
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal-content" style={{ textAlign: "center" }}>
+        <h1 style={{ fontSize: "1.8rem", margin: "0 0 0.5rem" }}>
+          🎉 Tripp's Tricky Tetraverse 🎉
+        </h1>
+        <p style={{ color: "var(--text-muted)", marginBottom: "1rem" }}>
+          A small, gentle arcade made for little hands and big imaginations.
+        </p>
+        <div style={{ margin: "1rem 0" }}>
+          <button
+            className="primary-button"
+            onClick={onBegin}
+            style={{ fontSize: "1rem" }}
+          >
+            Tap to Begin
+          </button>
+        </div>
+        <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+          Parents: Tap <strong>For Parents</strong> to read about safety and
+          screen time tools.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// --- Tutorial Modal ---
+interface TutorialModalProps {
+  gameId: GameId;
+  onClose: () => void;
+}
+
+const TutorialModal: React.FC<TutorialModalProps> = ({ gameId, onClose }) => {
+  const title = GAME_METADATA[gameId].name;
+  let body: React.ReactNode = null;
+  switch (gameId) {
+    case "memory":
+      body = (
+        <>
+          <p>Flip two cards at a time. If they match, they stay face up.</p>
+          <p>Try to remember where the pictures are and match all pairs.</p>
+        </>
+      );
+      break;
+    case "digging":
+      body = (
+        <>
+          <p>Tap a square to dig. One square hides a treasure.</p>
+          <p>Keep digging until you find the gem!</p>
+        </>
+      );
+      break;
+    case "boots":
+      body = (
+        <>
+          <p>Find the boot that matches the color shown at the top.</p>
+          <p>Tap the boot you think matches — good luck!</p>
+        </>
+      );
+      break;
+    case "airplanes":
+      body = (
+        <>
+          <p>Tap the planes as they fly by. Catch them all to win.</p>
+          <p>Be quick — but have fun!</p>
+        </>
+      );
+      break;
+  }
+
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal-content">
+        <h2>{title}</h2>
+        <div style={{ color: "var(--text-main)" }}>{body}</div>
+        <div style={{ marginTop: "1rem", display: "flex", gap: "0.6rem" }}>
+          <button
+            className="primary-button"
+            onClick={onClose}
+            autoFocus
+            aria-label={`Start ${title}`}
+          >
+            Start Game
+          </button>
+          <button
+            className="secondary-button"
+            onClick={onClose}
+            aria-label="Skip tutorial"
+          >
+            Skip
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Players Overlay ---
+interface PlayersOverlayProps {
+  player: PlayerProfile;
+  onClose: () => void;
+  onSave: (player: PlayerProfile) => void;
+}
+
+const PlayersOverlay: React.FC<PlayersOverlayProps> = ({ player, onClose, onSave }) => {
+  const [local, setLocal] = useState<PlayerProfile>(player);
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal-content">
+        <h2>Player Profile</h2>
+        <label className="form-label">
+          Name
+          <input
+            type="text"
+            value={local.name}
+            onChange={(e) => setLocal((s) => ({ ...s, name: e.target.value }))}
+          />
+        </label>
+        <label className="form-label">
+          Age
+          <input
+            type="number"
+            min={3}
+            max={12}
+            value={local.age ?? ""}
+            onChange={(e) =>
+              setLocal((s) => ({ ...s, age: e.target.value ? Number(e.target.value) : null }))
+            }
+          />
+        </label>
+        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem" }}>
+          <button
+            className="primary-button"
+            onClick={() => onSave(local)}
+          >
+            Save
+          </button>
+          <button className="secondary-button" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- About Overlay ---
+interface AboutOverlayProps {
+  onClose: () => void;
+}
+
+const AboutOverlay: React.FC<AboutOverlayProps> = ({ onClose }) => {
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal-content">
+        <h2>About Tripp's Tricky Tetraverse</h2>
+        <p>
+          This small arcade was made to celebrate a four-year-old's birthday —
+          short, gentle games that focus on matching, digging, picking, and
+          catching. It's made to be safe, ad-free, and local to this device.
+        </p>
+        <p>
+          Parents can set a screen-time limit, and the app keeps playful
+          progress notes that never leave the browser. The games are short
+          and non-competitive — great for little hands and growing minds.
+        </p>
+        <div style={{ marginTop: "1rem" }}>
+          <button className="primary-button" onClick={onClose}>
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
