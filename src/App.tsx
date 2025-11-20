@@ -397,7 +397,11 @@ const App: React.FC = () => {
     if (!canPlay) return;
     playAlternateClick();
     const key = `seenTutorial:${gameId}`;
-    if (!localStorage.getItem(key)) {
+    const lastSeen = localStorage.getItem(key);
+    const now = Date.now();
+    const oneWeek = 7 * 24 * 60 * 60 * 1000;
+
+    if (!lastSeen || (now - Number(lastSeen) > oneWeek)) {
       setShowTutorial({ gameId, visible: true });
       return;
     }
@@ -1473,132 +1477,223 @@ interface ParentalReportProps {
 }
 
 const ParentalReport: React.FC<ParentalReportProps> = ({ player, gameResults, onClose }) => {
-  const totals = player.learningProfile || {};
-  const entries = Object.entries(totals).sort((a,b)=> b[1]-a[1]);
-
-  // use persisted per-player results when available
   const allResults = (player.gameResults && player.gameResults.length) ? player.gameResults : gameResults;
-
+  
   const today = new Date();
   const defaultFrom = new Date(today.getTime() - 1000 * 60 * 60 * 24 * 30);
   const [fromDate, setFromDate] = useState<string>(defaultFrom.toISOString().slice(0,10));
   const [toDate, setToDate] = useState<string>(today.toISOString().slice(0,10));
 
-  const parseDay = (ts: number) => {
-    const d = new Date(ts);
-    return d.toISOString().slice(0,10);
-  };
-
-  const filteredResults = allResults.filter(r => {
-    const day = parseDay(r.timestamp);
-    return day >= fromDate && day <= toDate;
-  });
-
-  // aggregate plays per day and points per day from player's pointsHistory
-  const playsByDay: Record<string, number> = {};
-  filteredResults.forEach(r => {
-    const day = parseDay(r.timestamp);
-    playsByDay[day] = (playsByDay[day] || 0) + 1;
-  });
-
-  const pointsHistory = player.pointsHistory ?? [];
-  const pointsInRange = pointsHistory.filter(p => {
-    const day = parseDay(p.timestamp);
-    return day >= fromDate && day <= toDate;
-  });
-
-  // convert to arrays sorted by day (not used directly here)
+  const filteredResults = useMemo(() => {
+    return allResults.filter(r => {
+      const d = new Date(r.timestamp).toISOString().slice(0,10);
+      return d >= fromDate && d <= toDate;
+    });
+  }, [allResults, fromDate, toDate]);
 
   const totalPlays = filteredResults.length;
+  
+  const skills = player.learningProfile || {};
+  const sortedSkills = Object.entries(skills).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const maxSkillScore = Math.max(...Object.values(skills), 100);
 
-  const sparklinePoints = pointsInRange.map(p => p.delta);
+  const historyMap = new Map<string, number>();
+  filteredResults.forEach(r => {
+    const d = new Date(r.timestamp).toISOString().slice(0,10);
+    historyMap.set(d, (historyMap.get(d) || 0) + r.score);
+  });
+  const timelineData = Array.from(historyMap.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, score]) => ({ date, score }));
 
-  // export helpers
-  const exportSVG = (id: string, name: string) => {
-    const node = document.getElementById(id) as SVGSVGElement | null;
-    if (!node) return;
-    const svgData = new XMLSerializer().serializeToString(node);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const rasterizeSVG = (callback: (blob: Blob) => void) => {
+    if (!svgRef.current) return;
+    const svgData = new XMLSerializer().serializeToString(svgRef.current);
+    const img = new Image();
     const blob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `${name}.svg`; a.click(); URL.revokeObjectURL(url);
-  };
-
-  const exportPNG = async (id: string, name: string) => {
-    const node = document.getElementById(id) as SVGSVGElement | null;
-    if (!node) return;
-    const svgData = new XMLSerializer().serializeToString(node);
-    const svgBlob = new Blob([svgData], {type: 'image/svg+xml'});
-    const url = URL.createObjectURL(svgBlob);
-    const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      canvas.width = img.width; canvas.height = img.height;
+      canvas.width = 1200; 
+      canvas.height = 1600;
       const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.drawImage(img,0,0);
-      const png = canvas.toDataURL('image/png');
-      const a = document.createElement('a'); a.href = png; a.download = `${name}.png`; a.click();
-      URL.revokeObjectURL(url);
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, 1200, 1600);
+        canvas.toBlob((b) => {
+          if (b) callback(b);
+          URL.revokeObjectURL(url);
+        }, 'image/png');
+      }
     };
     img.src = url;
   };
 
+  const handleDownloadImage = () => {
+    rasterizeSVG((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Tetraverse-Report-${player.name || 'Player'}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  };
+
+  const handleShare = () => {
+    rasterizeSVG((blob) => {
+      const file = new File([blob], 'report.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({
+          files: [file],
+          title: "Tripp's Tricky Tetraverse Report",
+          text: `Check out ${player.name}'s progress!`
+        }).catch(() => console.log('Share failed or cancelled'));
+      } else {
+        alert("Sharing not supported on this device/browser. Image will be downloaded instead.");
+        handleDownloadImage();
+      }
+    });
+  };
+
+  const handleCopyText = () => {
+    const lines = [
+      `Parental Report for ${player.name || 'Player'}`,
+      `Generated: ${new Date().toLocaleDateString()}`,
+      `Total Points: ${player.points || 0}`,
+      `Total Plays (Selected Range): ${totalPlays}`,
+      '',
+      'Top Skills:',
+      ...sortedSkills.map(([s, v]) => `- ${s}: ${v} pts`),
+      '',
+      'Activity:',
+      ...timelineData.map(d => `- ${d.date}: ${d.score} pts`)
+    ];
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      alert("Report summary copied to clipboard!");
+    });
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal-content">
-        <h2>Parental Report — {player.name || 'Player'}</h2>
-        <p style={{fontSize:'0.95rem'}}>Points: <strong>{player.points ?? 0}</strong></p>
-
-        <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:8}}>
-          <label style={{fontSize:'0.9rem'}}>From <input type="date" value={fromDate} onChange={(e)=>setFromDate(e.target.value)} /></label>
-          <label style={{fontSize:'0.9rem'}}>To <input type="date" value={toDate} onChange={(e)=>setToDate(e.target.value)} /></label>
-          <div style={{marginLeft:'auto',fontSize:'0.9rem',color:'var(--text-muted)'}}>Plays: {totalPlays}</div>
+      <div className="modal-content" style={{width:'95%', maxWidth:'800px', maxHeight:'90vh', overflowY:'auto'}}>
+        <div className="no-print" style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16}}>
+          <h2 style={{margin:0}}>Parental Report</h2>
+          <button className="secondary-button" onClick={onClose}>Close</button>
         </div>
 
-        <h3>Points Timeline</h3>
-        <div style={{display:'flex',gap:12,alignItems:'center'}}>
-          <svg id="points-spark" width="260" height="60" viewBox={`0 0 ${Math.max(260, sparklinePoints.length*20)} 60`} style={{background:'rgba(255,255,255,0.02)',borderRadius:8}}>
-            {(() => {
-              if (sparklinePoints.length === 0) return null;
-              const max = Math.max(...sparklinePoints.map(Math.abs)) || 1;
-              const points = sparklinePoints.map((v,i) => {
-                const x = i * 20 + 10; const y = 30 - (v / max) * 24;
-                return `${x},${y}`;
-              }).join(' ');
-              return <polyline fill="none" stroke="#2d6a4f" strokeWidth={2} points={points} />;
-            })()}
+        <div className="no-print" style={{background:'#f5f5f5', padding:12, borderRadius:8, marginBottom:16, display:'flex', gap:12, flexWrap:'wrap', alignItems:'center'}}>
+          <label>From: <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} /></label>
+          <label>To: <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} /></label>
+          <span style={{fontSize:'0.9rem', color:'#666'}}>({totalPlays} plays in range)</span>
+        </div>
+
+        <div style={{display:'flex', justifyContent:'center', marginBottom:20}}>
+          <svg 
+            ref={svgRef}
+            width="600" 
+            height="800" 
+            viewBox="0 0 600 800" 
+            style={{
+              maxWidth:'100%', 
+              height:'auto', 
+              boxShadow:'0 4px 12px rgba(0,0,0,0.1)', 
+              background:'white',
+              borderRadius: 8
+            }}
+          >
+            <rect x="0" y="0" width="600" height="800" fill="#ffffff" />
+            <rect x="0" y="0" width="600" height="20" fill="#4cc9f0" />
+            <rect x="0" y="780" width="600" height="20" fill="#4cc9f0" />
+
+            <text x="300" y="70" textAnchor="middle" fontFamily="sans-serif" fontSize="28" fontWeight="bold" fill="#333">Tripp's Tricky Tetraverse</text>
+            <text x="300" y="100" textAnchor="middle" fontFamily="sans-serif" fontSize="18" fill="#666">Progress Report for {player.name || 'Player'}</text>
+            <text x="300" y="125" textAnchor="middle" fontFamily="sans-serif" fontSize="14" fill="#999">{new Date().toLocaleDateString()}</text>
+
+            <g transform="translate(50, 150)">
+              <rect x="0" y="0" width="240" height="80" rx="10" fill="#f0f8ff" stroke="#4cc9f0" strokeWidth="2" />
+              <text x="120" y="30" textAnchor="middle" fontFamily="sans-serif" fontSize="14" fill="#666">Total Points</text>
+              <text x="120" y="60" textAnchor="middle" fontFamily="sans-serif" fontSize="24" fontWeight="bold" fill="#0b3d91">{player.points || 0}</text>
+            </g>
+            <g transform="translate(310, 150)">
+              <rect x="0" y="0" width="240" height="80" rx="10" fill="#fff0f5" stroke="#ff6b6b" strokeWidth="2" />
+              <text x="120" y="30" textAnchor="middle" fontFamily="sans-serif" fontSize="14" fill="#666">Plays (Selected Range)</text>
+              <text x="120" y="60" textAnchor="middle" fontFamily="sans-serif" fontSize="24" fontWeight="bold" fill="#d63031">{totalPlays}</text>
+            </g>
+
+            <g transform="translate(50, 280)">
+              <text x="0" y="-10" fontFamily="sans-serif" fontSize="18" fontWeight="bold" fill="#333">Top Skills Built (Total Points)</text>
+              <line x1="150" y1="20" x2="150" y2="220" stroke="#ccc" />
+              <line x1="150" y1="220" x2="500" y2="220" stroke="#ccc" />
+              
+              {sortedSkills.map((skill, i) => {
+                const barWidth = (skill[1] / maxSkillScore) * 350;
+                return (
+                  <g key={skill[0]} transform={`translate(0, ${i * 35 + 30})`}>
+                    <text x="140" y="15" textAnchor="end" fontFamily="sans-serif" fontSize="12" fill="#444">{skill[0]}</text>
+                    <rect x="150" y="0" width={barWidth} height="20" fill="#4cc9f0" rx="4" />
+                    <text x={150 + barWidth + 5} y="15" fontFamily="sans-serif" fontSize="10" fill="#666">{skill[1]}</text>
+                  </g>
+                );
+              })}
+              <text x="325" y="240" textAnchor="middle" fontFamily="sans-serif" fontSize="12" fill="#999">Points Earned</text>
+            </g>
+
+            <g transform="translate(50, 560)">
+              <text x="0" y="-10" fontFamily="sans-serif" fontSize="18" fontWeight="bold" fill="#333">Activity Timeline (Points/Day)</text>
+              <line x1="40" y1="10" x2="40" y2="150" stroke="#ccc" />
+              <line x1="40" y1="150" x2="500" y2="150" stroke="#ccc" />
+              
+              {(() => {
+                if (timelineData.length < 2) return <text x="250" y="80" textAnchor="middle" fill="#999">Play more games to see a timeline!</text>;
+                
+                const maxDaily = Math.max(...timelineData.map(d => d.score), 10);
+                const width = 460;
+                const height = 140;
+                
+                const points = timelineData.map((d, i) => {
+                  const x = 40 + (i / (timelineData.length - 1)) * width;
+                  const y = 150 - (d.score / maxDaily) * height;
+                  return `${x},${y}`;
+                }).join(' ');
+
+                return (
+                  <>
+                    <polyline points={points} fill="none" stroke="#ff6b6b" strokeWidth="3" />
+                    {timelineData.map((d, i) => {
+                      const x = 40 + (i / (timelineData.length - 1)) * width;
+                      const y = 150 - (d.score / maxDaily) * height;
+                      return <circle key={i} cx={x} cy={y} r="4" fill="#fff" stroke="#ff6b6b" strokeWidth="2" />;
+                    })}
+                    <text x="40" y="170" textAnchor="middle" fontSize="10" fill="#666">{timelineData[0].date.slice(5)}</text>
+                    <text x="500" y="170" textAnchor="middle" fontSize="10" fill="#666">{timelineData[timelineData.length-1].date.slice(5)}</text>
+                  </>
+                );
+              })()}
+              <text x="20" y="80" textAnchor="middle" transform="rotate(-90, 20, 80)" fontFamily="sans-serif" fontSize="12" fill="#999">Points</text>
+            </g>
+
+            <text x="300" y="760" textAnchor="middle" fontFamily="sans-serif" fontSize="12" fill="#ccc">tripps-tricky-tetraverse.web.app</text>
           </svg>
-          <div style={{display:'flex',flexDirection:'column',gap:6}}>
-            <button className="secondary-button" onClick={()=>exportSVG('points-spark', `${player.name||'player'}-points`)}>Export SVG</button>
-            <button className="secondary-button" onClick={()=>exportPNG('points-spark', `${player.name||'player'}-points`)}>Export PNG</button>
-          </div>
         </div>
 
-        <h3 style={{marginTop:12}}>Top practiced skills</h3>
-        <ul>
-          {entries.slice(0,6).map(([k,v]) => (
-            <li key={k}>{k}: {Math.round(v)}</li>
-          ))}
-        </ul>
-
-        <p style={{fontSize:'0.9rem',color:'var(--text-muted)'}}>
-          This is a local, lightweight summary. For richer exportable reports, emotion tracking, or AI-driven suggestions, see the README (planned features).
-        </p>
-
-        <div style={{display:'flex',gap:8,marginTop:12}}>
-          <button className="primary-button" onClick={onClose}>Close</button>
-          <button className="secondary-button" onClick={() => {
-            const blob = new Blob([JSON.stringify({player, gameResults: allResults}, null, 2)], {type:'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `${player.name||'player'}-report.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-          }}>Export JSON</button>
+        <div className="no-print" style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+          <button className="primary-button" onClick={handleDownloadImage}>📸 Save as Photo</button>
+          <button className="primary-button" onClick={handlePrint}>🖨️ Print / PDF</button>
+          <button className="secondary-button" onClick={handleShare}>📱 Share (IG/Mobile)</button>
+          <button className="secondary-button" onClick={handleCopyText}>📋 Copy Text</button>
         </div>
-        <FooterBrand />
+        
+        <div className="no-print" style={{marginTop:16}}>
+           <FooterBrand />
+        </div>
       </div>
     </div>
   );

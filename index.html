@@ -986,6 +986,40 @@
         margin-bottom: 0.3rem;
       }
 
+      @media print {
+        body * {
+          visibility: hidden;
+        }
+        .modal-backdrop {
+          background: white;
+          position: absolute;
+          inset: 0;
+          align-items: flex-start;
+          padding: 0;
+        }
+        .modal-content, .modal-content * {
+          visibility: visible;
+        }
+        .modal-content {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          max-width: none;
+          box-shadow: none;
+          border: none;
+          padding: 20px;
+        }
+        /* Hide buttons and inputs in print to make it look like a doc */
+        button, input, .game-control-btn {
+          display: none !important;
+        }
+        /* Ensure SVG is visible */
+        svg {
+          break-inside: avoid;
+        }
+      }
+
       .app-footer {
         margin-top: auto;
         padding: 0.8rem 0.6rem;
