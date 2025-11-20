@@ -14,23 +14,6 @@ Each game appears in an animated carousel with:
 
 - A **catchy title**
 - A one-line **description**
-````markdown
-# Tripp's Tricky Tetraverse: an All Four You Kids’ Arcade
-
-In honour of Tripp's Fourth Birthday, I nixed a boring old card and took a stab at developing a kid-friendly arcade of web games with gentle screen-time tools, a parent info overlay, and simple skill snapshots based on how kids play.
-
----
-
-## 🎮 What’s Inside?
-
-This app is designed for young kids (roughly 3–10) to tap around and have fun while parents stay in control of time and context.
-
-### Games (The “Arcade”)
-
-Each game appears in an animated carousel with:
-
-- A **catchy title**
-- A one-line **description**
 - The key **skills it builds**
 - Difficulty label and skill **category**
 
@@ -203,11 +186,11 @@ all-four-you-arcade/
    ├─ main.tsx
    └─ App.tsx          
 ____
-Built with ❤️ in Boston by [@ashleyer](https://github.com/ashleyer).
+
 
 ## Music attributions
 
-Background music tracks used (place matching `.mp3` files in `public/sounds/`):
+Background music tracks used (place matching `mp3` files in `public/sounds/`):
 
 - **Tides & Smiles** — Moavii
   - Source: https://freetouse.com/music
@@ -253,3 +236,5 @@ Contact & Contributing
 - **Email:** [ashleye.romano@gmail.com](mailto:ashleye.romano@gmail.com)
 
 If you'd like direct help, open an issue on the repo above or send a short note to the email address.
+
+## Built with ❤️ in Boston by [@ashleyer](https://github.com/ashleyer)

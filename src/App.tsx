@@ -11,6 +11,10 @@ type PlayerProfile = {
   // optional per-player audio preferences
   musicKey?: string;
   musicVolume?: number;
+  // per-player persisted histories
+  gameResults?: GameResult[];
+  pointsHistory?: { timestamp: number; delta: number; reason?: string }[];
+  inventory?: string[];
 };
 
 type GameResult = {
@@ -179,6 +183,11 @@ const App: React.FC = () => {
 
   const [showParentalReport, setShowParentalReport] = useState<boolean>(false);
   const [showPrizeShop, setShowPrizeShop] = useState<boolean>(false);
+  const [redeemConfirm, setRedeemConfirm] = useState<{
+    open: boolean;
+    prize?: string;
+    cost?: number;
+  }>({ open: false });
 
   const [screenTime, setScreenTime] = useState<ScreenTimeState>({
     limitMinutes: null,
@@ -318,13 +327,51 @@ const App: React.FC = () => {
     goals?: { montessori: string[]; waldorf: string[]; intelligences: string[] },
     metrics?: Record<string, number>
   ) => {
-    setGameResults((prev) => [
-      ...prev,
-      { gameId, score, attempts, timestamp: Date.now(), goals, metrics },
-    ]);
+    const timestamp = Date.now();
 
-    // Award simple points and update learning profile
-    const earnedPoints = Math.max(1, Math.round(score / 10));
+    // persist to local gameResults array (session)
+    const result: GameResult = { gameId, score, attempts, timestamp, goals, metrics };
+    setGameResults((prev) => [...prev, result]);
+
+    // derive improved metrics
+    const derived: Record<string, number> = {};
+    // Concentration: prefer avgHoldTime (seconds) -> scale to 0-100 assuming 0-3s range
+    if (metrics && typeof metrics.avgHoldTime === 'number') {
+      const avg = metrics.avgHoldTime;
+      derived.concentration = Math.min(100, Math.round((avg / 3) * 100));
+    } else if (metrics && typeof metrics.concentration === 'number') {
+      derived.concentration = Math.min(100, Math.round(metrics.concentration));
+    }
+
+    // Accuracy: use provided accuracy or compute from score/attempts
+    if (metrics && typeof metrics.accuracy === 'number') {
+      derived.accuracy = Math.min(100, Math.round(metrics.accuracy));
+    } else {
+      // normalized accuracy: higher score relative to max (100) and fewer attempts
+      const attemptFactor = Math.max(1, attempts);
+      derived.accuracy = Math.min(100, Math.round((score / 100) * 100 * (1 / attemptFactor) * 1.5));
+    }
+
+    // Reaction score: use reactionScore if supplied, otherwise base on score and attempts
+    if (metrics && typeof metrics.reactionScore === 'number') {
+      derived.reactionScore = Math.min(100, Math.round(metrics.reactionScore));
+    } else {
+      derived.reactionScore = Math.min(100, Math.round(score * 0.9));
+    }
+
+    // Persistence: for digging-like tasks, fewer digs = higher persistence score
+    if (metrics && typeof metrics.persistence === 'number') {
+      const p = metrics.persistence; // attempts
+      derived.persistence = Math.max(0, Math.min(100, Math.round(100 - (p - 1) * 12)));
+    }
+
+    // Award points scaled by performance and difficulty
+    const basePoints = Math.max(1, Math.round(score / 12));
+    // bonus for concentration/accuracy/reactive
+    const bonus = Math.round(((derived.concentration || 0) + (derived.accuracy || 0) + (derived.reactionScore || 0)) / 300 * 5);
+    const earnedPoints = basePoints + bonus;
+
+    // update player profile with learningProfile aggregates and histories
     setPlayer((prev) => {
       const lp = { ...(prev.learningProfile ?? {}) } as Record<string, number>;
       if (goals && goals.intelligences) {
@@ -332,7 +379,6 @@ const App: React.FC = () => {
           lp[i] = (lp[i] || 0) + score;
         });
       }
-      // also map montessori/waldorf goal strings into the profile so parents see practiced skills
       if (goals && goals.montessori) {
         goals.montessori.forEach((g) => {
           lp[g] = (lp[g] || 0) + score;
@@ -344,17 +390,24 @@ const App: React.FC = () => {
         });
       }
 
-      // aggregate simple metrics into profile too
-      if (metrics) {
-        Object.entries(metrics).forEach(([k, v]) => {
-          lp[k] = (lp[k] || 0) + v;
-        });
-      }
+      // aggregate derived metrics into profile too
+      Object.entries(derived).forEach(([k, v]) => {
+        lp[k] = (lp[k] || 0) + v;
+      });
+
+      // append to per-player gameResults history and pointsHistory
+      const prevResults = prev.gameResults ?? [];
+      const prevPoints = prev.pointsHistory ?? [];
+      const newResults = [...prevResults, result];
+      const newPoints = [...prevPoints, { timestamp, delta: earnedPoints, reason: gameId }];
+      const newPointsTotal = (prev.points || 0) + earnedPoints;
 
       return {
         ...prev,
-        points: (prev.points || 0) + earnedPoints,
+        points: newPointsTotal,
         learningProfile: lp,
+        gameResults: newResults,
+        pointsHistory: newPoints,
       };
     });
   };
@@ -840,17 +893,37 @@ const App: React.FC = () => {
       {showParentalReport && (
         <ParentalReport player={player} gameResults={gameResults} onClose={() => setShowParentalReport(false)} />
       )}
-
       {showPrizeShop && (
         <PrizeShop
           player={player}
           onClose={() => setShowPrizeShop(false)}
           onRedeem={(cost, prize) => {
-            setPlayer((p) => ({ ...p, points: Math.max(0, (p.points || 0) - cost) }));
-            // simple flow: acknowledge via alert
-            alert(`Redeemed ${prize} for ${cost} points!`);
+            // Redeem: deduct points, append to inventory and pointsHistory, and show confirmation
+            setPlayer((p) => {
+              const remaining = Math.max(0, (p.points || 0) - cost);
+              const inv = [...(p.inventory || []), prize];
+              const ph = [...(p.pointsHistory || []), { timestamp: Date.now(), delta: -cost, reason: `redeem:${prize}` }];
+              return { ...p, points: remaining, inventory: inv, pointsHistory: ph };
+            });
+            setRedeemConfirm({ open: true, prize, cost });
           }}
         />
+      )}
+
+      {redeemConfirm.open && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal-content">
+            <h2>Redeemed!</h2>
+            <p>
+              You redeemed <strong>{redeemConfirm.prize}</strong> for <strong>{redeemConfirm.cost}</strong> points.
+            </p>
+            <p style={{fontSize:'0.95rem'}}>Inventory updated for {player.name || 'Player'}.</p>
+            <div style={{display:'flex',gap:8,marginTop:12}}>
+              <button className="primary-button" onClick={() => { setRedeemConfirm({open:false}); setShowPrizeShop(false); }}>Done</button>
+            </div>
+            <FooterBrand />
+          </div>
+        </div>
       )}
 
       {showPlayersOverlay && (
@@ -884,6 +957,13 @@ const App: React.FC = () => {
     </div>
   );
 };
+
+// small branded footer used in modals and views
+const FooterBrand: React.FC = () => (
+  <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 10, textAlign: 'center' }} className="brand-footer">
+    Built with ❤️ in Boston by <a href="https://github.com/ashleyer" target="_blank" rel="noreferrer" style={{ color: 'var(--brand-darkgreen)' }}>@ashleyer</a>
+  </div>
+);
 
 interface ArcadeViewProps {
   canPlay: boolean;
@@ -1523,6 +1603,7 @@ const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport }) 
             Got it – let’s play
           </button>
         </div>
+        <FooterBrand />
       </div>
     </div>
   );
@@ -1568,6 +1649,7 @@ const IntroBanner: React.FC<IntroBannerProps> = ({ onBegin }) => {
           </button>
         </div>
         <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Parents: Tap <strong>For Parents</strong></p>
+        <FooterBrand />
       </div>
     </div>
   );
