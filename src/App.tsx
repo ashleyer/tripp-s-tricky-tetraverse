@@ -152,7 +152,7 @@ const App: React.FC = () => {
       return "silent";
     }
   });
-  const [musicVolume, setMusicVolume] = useState<number>(() => {
+  const [musicVolume] = useState<number>(() => {
     try {
       return typeof player.musicVolume === 'number'
         ? player.musicVolume
@@ -161,7 +161,7 @@ const App: React.FC = () => {
       return 0.45;
     }
   });
-  const [rememberMusic, setRememberMusic] = useState<boolean>(() => {
+  const [rememberMusic] = useState<boolean>(() => {
     try {
       const v = localStorage.getItem("rememberMusic");
       return v === null ? true : v === "1";
@@ -172,7 +172,6 @@ const App: React.FC = () => {
   const [isMusicPlaying, setIsMusicPlaying] = useState<boolean>(false);
   const musicRef = useRef<HTMLAudioElement | null>(null);
   const currentMusicKeyRef = useRef<string | null>(null);
-  const prevVolumeRef = useRef<number>(musicVolume || 0.45);
 
   const [showParentalReport, setShowParentalReport] = useState<boolean>(false);
   const [showPrizeShop, setShowPrizeShop] = useState<boolean>(false);
@@ -190,12 +189,6 @@ const App: React.FC = () => {
     remainingSeconds: 0,
     isActive: false,
   });
-
-  const [uploadedAvatarPreview, setUploadedAvatarPreview] = useState<
-    string | null
-  >(null);
-  // Silence unused warning for now as we might use it later or refactor further
-  useEffect(() => { if(uploadedAvatarPreview) {} }, [uploadedAvatarPreview]);
 
   // Timer effect for screen time
   useEffect(() => {
@@ -517,6 +510,15 @@ const App: React.FC = () => {
               : (player.avatarUrl ? '📷' : '🙂')}
           </span>
           <span className="player-name-label">{player.name || "Player"}</span>
+        </button>
+
+        <button 
+          className="prize-widget-btn" 
+          onClick={() => setShowPrizeShop(true)}
+          aria-label="Prize Shop"
+        >
+          <span className="prize-icon">🏆</span>
+          <span className="prize-label">Prizes</span>
         </button>
 
         {/* Compact Music Bar */}

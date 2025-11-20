@@ -635,6 +635,42 @@ body {
   background: rgba(30, 80, 200, 0.15);
 }
 
+.prize-widget-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 193, 7, 0.12);
+  border: 1px solid rgba(255, 193, 7, 0.4);
+  border-radius: 30px;
+  padding: 0.3rem 0.8rem 0.3rem 0.4rem;
+  cursor: pointer;
+  transition: background 0.1s;
+  color: #b38f00;
+}
+
+.prize-widget-btn:hover {
+  background: rgba(255, 193, 7, 0.25);
+}
+
+.prize-icon {
+  font-size: 1.4rem;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+.prize-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: #997b00;
+}
+
 .player-avatar-icon {
   font-size: 1.4rem;
   width: 36px;
