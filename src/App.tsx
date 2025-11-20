@@ -943,19 +943,22 @@ const App: React.FC = () => {
         <AboutOverlay onClose={() => setShowAboutOverlay(false)} />
       )}
 
-      <footer className="app-footer">
-        <p>
-          built with ❤️ by{" "}
-          <a
-            href="https://github.com/ashleyer"
-            target="_blank"
-            rel="noreferrer"
-          >
-            aeromano
-          </a>{" "}
-          in Boston
-        </p>
-      </footer>
+      {/* Only show footer on main (arcade) page */}
+      {showArcade && (
+        <footer className="app-footer">
+          <p>
+            built with ❤️ by{" "}
+            <a
+              href="https://github.com/ashleyer"
+              target="_blank"
+              rel="noreferrer"
+            >
+              aeromano
+            </a>{" "}
+            in Boston
+          </p>
+        </footer>
+      )}
     </div>
   );
 };
