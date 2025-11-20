@@ -1469,13 +1469,26 @@ const BootsGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
 };
 
 // --- Game 4: Airplanes ---
+type PlaneState = {
+  id: number;
+  caught: boolean;
+  top: number; // percent
+  duration: number; // seconds
+  delay: number; // seconds
+};
+
 const AirplanesGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
-  const [planes, setPlanes] = useState(
-    Array.from({ length: 6 }, (_, i) => ({
+  const TOTAL_PLANES = 6;
+  const makePlanes = (): PlaneState[] =>
+    Array.from({ length: TOTAL_PLANES }, (_, i) => ({
       id: i,
       caught: false,
-    }))
-  );
+      top: Math.round(6 + Math.random() * 72),
+      duration: Math.round(6 + Math.random() * 10),
+      delay: Math.round(Math.random() * 300) / 100, // up to 3s
+    }));
+
+  const [planes, setPlanes] = useState<PlaneState[]>(makePlanes);
   const [caughtCount, setCaughtCount] = useState(0);
   const [clicks, setClicks] = useState(0);
   const [finished, setFinished] = useState(false);
@@ -1489,15 +1502,29 @@ const AirplanesGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
     );
     setCaughtCount((prev) => {
       const next = prev + 1;
-      if (next === planes.length) {
+      if (next === TOTAL_PLANES) {
         playSound("success");
         setFinished(true);
-        const score = Math.max(10, 100 - (clicks + 1 - planes.length) * 5);
-          onFinish(score, clicks + 1, { reactionScore: score });
+        const score = Math.max(10, 100 - (clicks + 1 - TOTAL_PLANES) * 5);
+        onFinish(score, clicks + 1, { reactionScore: score });
       }
       return next;
     });
   };
+
+  // allow restart if wanted: when finished, repopulate after a short delay
+  useEffect(() => {
+    if (!finished) return;
+    const t = setTimeout(() => {
+      // reset for a fresh round without forcing the user back
+      setPlanes(makePlanes);
+      setCaughtCount(0);
+      setClicks(0);
+      setFinished(false);
+    }, 3000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished]);
 
   return (
     <div className="game-panel">
@@ -1513,16 +1540,22 @@ const AirplanesGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
           <button
             key={plane.id}
             type="button"
-            className={`plane ${plane.caught ? "plane-caught" : ""}`}
+            className={`plane ${plane.caught ? "plane-caught" : "fly"}`}
             onClick={() => handlePlaneClick(plane.id)}
             aria-label={plane.caught ? "Plane already caught" : "Catch plane"}
+            style={{
+              top: `${plane.top}%`,
+              animationDuration: `${plane.duration}s`,
+              animationDelay: `${plane.delay}s`,
+              animationPlayState: plane.caught ? "paused" : "running",
+            }}
           >
             <span aria-hidden="true">✈️</span>
           </button>
         ))}
       </div>
       <p className="game-meta-small">
-        Caught: {caughtCount} / {planes.length}
+        Caught: {caughtCount} / {TOTAL_PLANES}
       </p>
       {finished && (
         <p className="game-success-message">
@@ -1534,16 +1567,15 @@ const AirplanesGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
 };
 
 // --- Parent Overlay ---
-interface ParentOverlayProps {
-  onClose: () => void;
-}
-
+// --- Parent Overlay ---
 interface ParentOverlayProps {
   onClose: () => void;
   onOpenReport?: () => void;
 }
 
 const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport }) => {
+  const [showDetails, setShowDetails] = useState<boolean>(false);
+
   return (
     <div
       className="modal-backdrop"
@@ -1554,41 +1586,31 @@ const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport }) 
       <div className="modal-content">
         <h2>For Parents & Caregivers</h2>
         <p>
-          This little arcade was designed to be{" "}
-          <strong>gentle, low-pressure, and kid-friendly</strong>. There are no
-          ads, no in-app purchases, and no hidden chats. Everything runs
-          entirely in your child’s browser.
+          This little arcade was designed to be <strong>gentle, low-pressure, and kid-friendly</strong>.
+          There are no ads, no in-app purchases, and no hidden chats. Everything runs locally in your child’s browser.
         </p>
         <ul>
           <li>
-            <strong>Screen time limit:</strong> You can set a session time limit
-            in minutes. When time is up, games pause with a friendly reminder
-            to take a break.
+            <strong>Screen time limit:</strong> You can set a session time limit in minutes. When time is up, games pause with a friendly reminder to take a break.
           </li>
           <li>
-            <strong>Data & privacy:</strong> Player names, ages, and avatars
-            never leave this device. There is no sign-in and no tracking.
+            <strong>Data & privacy:</strong> Player names, ages, and avatars never leave this device. There is no sign-in and no tracking.
           </li>
           <li>
-            <strong>Skill snapshots (not real testing):</strong> The “how you’re
-            doing” messages are just playful estimates based on simple scores.
-            They are <em>not</em> medical, psychological, or educational
-            assessments.
+            <strong>Skill snapshots (not real testing):</strong> The “how you’re doing” messages are just playful estimates based on simple scores.
           </li>
           <li>
-            <strong>Safety & tone:</strong> All content is non-violent,
-            non-competitive, and focused on simple tapping, matching, and
-            noticing skills.
+            <strong>Safety & tone:</strong> All content is non-violent and non-competitive.
           </li>
         </ul>
         <p>
-          Please stay nearby while kids play, and treat this as a fun add-on to
-          their day, not a babysitter or a test. Reading, drawing, moving their
-          body, and talking with real people are still the core ingredients of a
-          healthy day.
+          Please stay nearby while kids play — treat this as a fun add-on, not a babysitter. Real-world play and connection matter most.
         </p>
-        <p style={{fontSize:'0.9rem',color:'var(--text-muted)'}}>This app stores lightweight, local reports and planned features (emotion tracking, AI suggestions, exportable reports) are described in the README; any such features will be opt-in and privacy-first.</p>
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+
+        <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button type="button" className="secondary-button" onClick={() => setShowDetails((s) => !s)} aria-expanded={showDetails}>
+            {showDetails ? 'Hide details' : 'More info'}
+          </button>
           {onOpenReport && (
             <button type="button" className="secondary-button" onClick={onOpenReport}>
               View Parental Report
@@ -1599,11 +1621,23 @@ const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport }) 
             className="primary-button"
             onClick={onClose}
             autoFocus
+            style={{ marginLeft: 'auto' }}
           >
             Got it – let’s play
           </button>
         </div>
-        <FooterBrand />
+
+        {showDetails && (
+          <div style={{ marginTop: 12, fontSize: '0.92rem', color: 'var(--text-muted)' }}>
+            <p>
+              This app stores lightweight, local reports and planned future features (emotion tracking, AI suggestions, exportable reports) are described in the README; any such features will be opt-in and privacy-first.
+            </p>
+            <p>
+              Everything stays on this device unless you explicitly export or share a report. If you have concerns, email <a href="mailto:ashleye.romano@gmail.com">ashleye.romano@gmail.com</a>.
+            </p>
+          </div>
+        )}
+
       </div>
     </div>
   );

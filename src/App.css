@@ -40,3 +40,62 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Toddler-friendly game styles */
+.game-panel {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  color: inherit;
+}
+
+.game-instructions { font-size: 1.05rem; margin-bottom: 10px; }
+
+.memory-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  justify-items: center;
+  align-items: center;
+  padding: 8px;
+}
+.memory-card {
+  width: clamp(72px, 16vw, 120px);
+  height: clamp(72px, 16vw, 120px);
+  font-size: clamp(1.6rem, 6vw, 3rem);
+  display:flex;align-items:center;justify-content:center;
+  border-radius:12px;background:#ffffff11;border:1px solid rgba(255,255,255,0.06);
+}
+.memory-card-flipped { background: #fff; color: #222; }
+
+.dig-grid {
+  display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; padding:8px;
+}
+.dig-cell { width: clamp(80px,18vw,140px); height: clamp(80px,18vw,140px); font-size: clamp(1.6rem,6vw,3rem); border-radius:12px; background:#ffffff11; }
+.dig-cell-dug { background:#fff; }
+.dig-cell-treasure { background: linear-gradient(135deg,#fff2,#ffd700); }
+
+.boots-row { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; padding:8px; }
+.boots-cell { width: clamp(80px,15vw,120px); height: clamp(80px,15vw,120px); font-size: clamp(1.6rem,5vw,2.4rem); display:flex; align-items:center; justify-content:center; border-radius:12px; background:#ffffff11; }
+
+.planes-area { position: relative; height: 220px; margin: 6px 0 12px; overflow: hidden; border-radius:12px; background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); }
+.plane { position: absolute; left: -120px; width: 84px; height: 84px; font-size: 2.4rem; display:flex; align-items:center; justify-content:center; background: #fff; color: #222; border-radius: 14px; box-shadow: 0 6px 14px rgba(0,0,0,0.25); border: none; }
+.plane:hover { transform: translateY(-6px) scale(1.03); }
+.plane-caught { opacity: 0.4; transform: scale(0.9); filter: grayscale(60%); }
+
+@keyframes fly-across {
+  from { transform: translateX(0); }
+  to { transform: translateX(140vw); }
+}
+
+.plane.fly { animation-name: fly-across; animation-timing-function: linear; animation-iteration-count: infinite; }
+
+/* make general controls and play buttons larger for toddlers */
+.primary-button, .secondary-button { padding: 0.8rem 1.2rem; font-size: 1.05rem; border-radius: 12px; }
+.game-play-button { font-size: 1.2rem; padding: 0.9rem 1.6rem; }
+
+/* ensure good contrast on darker backgrounds */
+body { background-color: #0f1720; }
