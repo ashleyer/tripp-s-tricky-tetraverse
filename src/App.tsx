@@ -818,7 +818,7 @@ function App() {
             <div style={{display:'flex',gap:8,marginTop:12}}>
               <button className="primary-button" onClick={() => { setRedeemConfirm({open:false}); setShowPrizeShop(false); }}>Done</button>
             </div>
-            <FooterBrand />
+
           </div>
         </div>
       )}
@@ -1382,7 +1382,6 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ gameId, onClose }) => {
             Skip
           </button>
         </div>
-        <FooterBrand />
       </div>
     </div>
   );
@@ -1529,7 +1528,6 @@ const PlayersOverlay: React.FC<PlayersOverlayProps> = ({ player, onClose, onSave
             Switch Player
           </button>
         </div>
-        <FooterBrand />
       </div>
     </div>
   );
@@ -1570,7 +1568,6 @@ const AboutOverlay: React.FC<AboutOverlayProps> = ({ onClose }) => {
             Close
           </button>
         </div>
-        <FooterBrand />
       </div>
     </div>
   );
@@ -1955,7 +1952,6 @@ const ParentalReport: React.FC<ParentalReportProps> = ({ player, gameResults, on
         )}
         
         <div className="no-print" style={{marginTop:16}}>
-           <FooterBrand />
         </div>
       </div>
     </div>
