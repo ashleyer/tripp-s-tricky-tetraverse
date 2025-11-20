@@ -1,7 +1,7 @@
 :root {
   /* These stacks assume Milkyway and Shooting Star are provided or installed */
-  --font-display: 'Milkyway', 'Comic Sans MS', 'Trebuchet MS', 'Segoe UI', sans-serif;
-  --font-body: 'Shooting Star', 'Comic Sans MS', 'Trebuchet MS', 'Segoe UI', sans-serif;
+  --font-display: 'Bubblegum Sans', 'Comic Sans MS', 'Trebuchet MS', 'Segoe UI', cursive;
+  --font-body: 'Fredoka', 'Comic Sans MS', 'Trebuchet MS', 'Segoe UI', sans-serif;
 
   /* New Vibrant Palette */
   --bg-primary: #0b3d91;
