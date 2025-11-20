@@ -88,15 +88,15 @@ const GAME_METADATA: Record<
     intelligences: ["Bodily-Kinesthetic", "Naturalist"],
   },
   boots: {
-    name: "Isabelle’s Boots",
-    tagline: "Help Isabelle pick matching colorful boots!",
-    skills: ["Color matching", "Attention to detail"],
+    name: "Isabelle’s Boot Designer",
+    tagline: "Design your own colorful rain boots!",
+    skills: ["Creativity", "Color Matching", "Design"],
     difficulty: "Easy",
     category: "Attention & Coordination",
     emoji: "👢",
-    montessoriGoals: ["Color discrimination", "Practical life matching"],
-    waldorfGoals: ["Artful color play", "Rhythmic repetition"],
-    intelligences: ["Visual-Spatial", "Interpersonal"],
+    montessoriGoals: ["Color discrimination", "Creative expression"],
+    waldorfGoals: ["Artful color play", "Imaginative design"],
+    intelligences: ["Visual-Spatial", "Intrapersonal"],
   },
   airplanes: {
     name: "Airplane Catch",
@@ -122,7 +122,39 @@ const MUSIC_TRACKS: { key: string; label: string; emoji: string; path: string }[
 
 // createConfetti and playSound now live in utils modules
 
-const App: React.FC = () => {
+interface WelcomeBackModalProps {
+  playerName: string;
+  onPlay: () => void;
+  onTour: () => void;
+  onSwitch: () => void;
+}
+
+const WelcomeBackModal: React.FC<WelcomeBackModalProps> = ({ playerName, onPlay, onTour, onSwitch }) => {
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal-content" style={{textAlign: 'center', maxWidth: '400px'}}>
+        <h2>Welcome Back, {playerName}!</h2>
+        <div style={{fontSize: '4rem', margin: '20px 0'}}>👋</div>
+        <div style={{display: 'flex', flexDirection: 'column', gap: '12px', margin: '0 auto'}}>
+          <button className="primary-button" onClick={onPlay} style={{width: '100%'}}>Let's Play!</button>
+          <button className="secondary-button" onClick={onTour} style={{width: '100%'}}>Take a Tour</button>
+          <button 
+            className="text-button" 
+            onClick={onSwitch} 
+            style={{
+              marginTop: '10px', fontSize: '0.9rem', color: 'var(--text-muted)', 
+              background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline'
+            }}
+          >
+            Not {playerName}? Switch Player
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+function App() {
   const [player, setPlayer] = useState<PlayerProfile>(() => {
     try {
       const raw = localStorage.getItem("playerProfile");
@@ -146,6 +178,7 @@ const App: React.FC = () => {
   const [showPlayersOverlay, setShowPlayersOverlay] = useState<boolean>(false);
   const [showAboutOverlay, setShowAboutOverlay] = useState<boolean>(false);
   const [showIntro, setShowIntro] = useState<boolean>(!player.name);
+  const [showWelcomeBack, setShowWelcomeBack] = useState<boolean>(!!player.name);
   const [showTour, setShowTour] = useState<boolean>(false);
   const [pendingTour, setPendingTour] = useState<boolean>(false);
   const [showTutorial, setShowTutorial] = useState<{
@@ -597,6 +630,7 @@ const App: React.FC = () => {
             </button>
           </div>
         ) : (
+          <>
           <div 
             className="profile-card interactive-hover" 
             onClick={() => setShowPlayersOverlay(true)}
@@ -633,6 +667,16 @@ const App: React.FC = () => {
               </p>
             </div>
           </div>
+          <div style={{textAlign: 'center', marginTop: '4px'}}>
+             <button 
+               className="text-button" 
+               onClick={() => setShowPlayersOverlay(true)} 
+               style={{fontSize: '0.8rem', textDecoration: 'underline', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer'}}
+             >
+               Switch Player
+             </button>
+          </div>
+          </>
         )}
       </section>
 
@@ -788,6 +832,34 @@ const App: React.FC = () => {
             setShowPlayersOverlay(false);
           }}
           performanceSummary={performanceSummary}
+          onOpenReport={() => {
+            setShowPlayersOverlay(false);
+            setShowParentalReport(true);
+          }}
+          onSwitchPlayer={() => {
+            if (window.confirm("Are you sure you want to switch players? This will sign you out.")) {
+               setPlayer({ name: "", age: null, avatarUrl: null, points: 0, learningProfile: {} });
+               setShowPlayersOverlay(false);
+               // Don't show intro, just let them enter new name
+               setShowIntro(false);
+            }
+          }}
+        />
+      )}
+
+      {showWelcomeBack && (
+        <WelcomeBackModal
+          playerName={player.name}
+          onPlay={() => setShowWelcomeBack(false)}
+          onTour={() => {
+            setShowWelcomeBack(false);
+            setShowTour(true);
+          }}
+          onSwitch={() => {
+            setShowWelcomeBack(false);
+            setPlayer({ name: "", age: null, avatarUrl: null, points: 0, learningProfile: {} });
+            setShowIntro(false);
+          }}
         />
       )}
 
@@ -1208,7 +1280,7 @@ const IntroBanner: React.FC<IntroBannerProps> = ({ onBegin }) => {
   const slides = [
     { emoji: '🚜', title: 'Truck Match' },
     { emoji: '🏴‍☠️', title: "Long Shorty's Loot" },
-    { emoji: '👢', title: 'Isabelle\'s Boots' },
+    { emoji: '👢', title: 'Isabelle\'s Boot Designer' },
     { emoji: '✈️', title: 'Airplane Catch' },
   ];
   const [idx, setIdx] = useState(0);
@@ -1273,8 +1345,8 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ gameId, onClose }) => {
     case "boots":
       body = (
         <>
-          <p>Find the boot that matches the color shown at the top.</p>
-          <p>Tap the boot you think matches — good luck!</p>
+          <p>Pick colors, patterns, and stickers to design a custom boot.</p>
+          <p>Tap "Done" when you are happy with your creation!</p>
         </>
       );
       break;
@@ -1322,9 +1394,11 @@ interface PlayersOverlayProps {
   onClose: () => void;
   onSave: (player: PlayerProfile) => void;
   performanceSummary: string;
+  onOpenReport: () => void;
+  onSwitchPlayer: () => void;
 }
 
-const PlayersOverlay: React.FC<PlayersOverlayProps> = ({ player, onClose, onSave, performanceSummary }) => {
+const PlayersOverlay: React.FC<PlayersOverlayProps> = ({ player, onClose, onSave, performanceSummary, onOpenReport, onSwitchPlayer }) => {
   const [local, setLocal] = useState<PlayerProfile>(player);
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
 
@@ -1410,6 +1484,17 @@ const PlayersOverlay: React.FC<PlayersOverlayProps> = ({ player, onClose, onSave
         <div style={{ background: 'rgba(0,0,0,0.03)', padding: '12px', borderRadius: '12px', marginBottom: '1rem' }}>
           <h3 style={{fontSize:'1rem', margin:'0 0 6px 0'}}>Skill Snapshot</h3>
           <p style={{fontSize:'0.9rem', margin:0, color:'var(--text-muted)'}}>{performanceSummary}</p>
+          <button 
+            className="text-link" 
+            onClick={onOpenReport}
+            style={{
+              background: 'none', border: 'none', padding: 0, 
+              color: 'var(--color-accent)', textDecoration: 'underline', 
+              cursor: 'pointer', fontSize: '0.9rem', marginTop: '8px'
+            }}
+          >
+            View Parental Report 📊
+          </button>
         </div>
 
         <div style={{marginTop:8}}>
@@ -1425,7 +1510,7 @@ const PlayersOverlay: React.FC<PlayersOverlayProps> = ({ player, onClose, onSave
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem", flexWrap: 'wrap' }}>
+        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem", flexWrap: 'wrap', alignItems: 'center' }}>
           <button className="primary-button" onClick={() => onSave(local)}>Save Profile</button>
           <button className="secondary-button" onClick={onClose}>Cancel</button>
           <button
@@ -1435,6 +1520,13 @@ const PlayersOverlay: React.FC<PlayersOverlayProps> = ({ player, onClose, onSave
             }}
           >
             Prize Shop ({local.points ?? 0} pts)
+          </button>
+          <button 
+            className="secondary-button" 
+            onClick={onSwitchPlayer}
+            style={{marginLeft: 'auto', color: '#d63031', borderColor: '#d63031'}}
+          >
+            Switch Player
           </button>
         </div>
         <FooterBrand />
@@ -1499,6 +1591,11 @@ const ParentalReport: React.FC<ParentalReportProps> = ({ player, gameResults, on
   const [fromDate, setFromDate] = useState<string>(defaultFrom.toISOString().slice(0,10));
   const [toDate, setToDate] = useState<string>(today.toISOString().slice(0,10));
 
+  const availableSkills = useMemo(() => Object.keys(player.learningProfile || {}), [player.learningProfile]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>(availableSkills.slice(0, 5));
+  const [chartType, setChartType] = useState<'bar' | 'line' | 'radar'>('bar');
+  const [showPreview, setShowPreview] = useState(false);
+
   const filteredResults = useMemo(() => {
     return allResults.filter(r => {
       const d = new Date(r.timestamp).toISOString().slice(0,10);
@@ -1509,7 +1606,6 @@ const ParentalReport: React.FC<ParentalReportProps> = ({ player, gameResults, on
   const totalPlays = filteredResults.length;
   
   const skills = player.learningProfile || {};
-  const sortedSkills = Object.entries(skills).sort((a, b) => b[1] - a[1]).slice(0, 6);
   const maxSkillScore = Math.max(...Object.values(skills), 100);
 
   const historyMap = new Map<string, number>();
@@ -1574,137 +1670,289 @@ const ParentalReport: React.FC<ParentalReportProps> = ({ player, gameResults, on
     });
   };
 
-  const handleCopyText = () => {
-    const lines = [
-      `Parental Report for ${player.name || 'Player'}`,
-      `Generated: ${new Date().toLocaleDateString()}`,
-      `Total Points: ${player.points || 0}`,
-      `Total Plays (Selected Range): ${totalPlays}`,
-      '',
-      'Top Skills:',
-      ...sortedSkills.map(([s, v]) => `- ${s}: ${v} pts`),
-      '',
-      'Activity:',
-      ...timelineData.map(d => `- ${d.date}: ${d.score} pts`)
-    ];
-    navigator.clipboard.writeText(lines.join('\n')).then(() => {
-      alert("Report summary copied to clipboard!");
-    });
-  };
-
   const handlePrint = () => {
     window.print();
   };
 
+  const toggleSkill = (skill: string) => {
+    setSelectedSkills(prev => 
+      prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
+    );
+  };
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal-content" style={{width:'95%', maxWidth:'800px', maxHeight:'90vh', overflowY:'auto'}}>
+      <div className="modal-content" style={{width:'95%', maxWidth:'900px', maxHeight:'90vh', overflowY:'auto'}}>
         <div className="no-print" style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16}}>
-          <h2 style={{margin:0}}>Parental Report</h2>
+          <h2 style={{margin:0}}>Parental Report Generator</h2>
           <button className="secondary-button" onClick={onClose}>Close</button>
         </div>
 
-        <div className="no-print" style={{background:'#f5f5f5', padding:12, borderRadius:8, marginBottom:16, display:'flex', gap:12, flexWrap:'wrap', alignItems:'center'}}>
-          <label>From: <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} /></label>
-          <label>To: <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} /></label>
-          <span style={{fontSize:'0.9rem', color:'#666'}}>({totalPlays} plays in range)</span>
+        {/* Configuration Panel */}
+        <div className="no-print" style={{background:'#f8f9fa', padding:16, borderRadius:12, marginBottom:20, border:'1px solid #e9ecef'}}>
+          <h3 style={{marginTop:0, fontSize:'1.1rem'}}>1. Select Data Range</h3>
+          <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:16}}>
+            <label>From: <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} /></label>
+            <label>To: <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} /></label>
+            <span style={{fontSize:'0.9rem', color:'#666'}}>({totalPlays} plays found)</span>
+          </div>
+
+          <h3 style={{marginTop:0, fontSize:'1.1rem'}}>2. Select Skills to Include</h3>
+          <div style={{display:'flex', flexWrap:'wrap', gap:8, marginBottom:16}}>
+            {availableSkills.length === 0 && <span style={{color:'#666', fontStyle:'italic'}}>No skills recorded yet. Play some games!</span>}
+            {availableSkills.map(skill => (
+              <label key={skill} style={{display:'flex', alignItems:'center', gap:4, background:'white', padding:'4px 8px', borderRadius:4, border:'1px solid #ddd', cursor:'pointer'}}>
+                <input 
+                  type="checkbox" 
+                  checked={selectedSkills.includes(skill)} 
+                  onChange={() => toggleSkill(skill)}
+                />
+                {skill}
+              </label>
+            ))}
+          </div>
+
+          <h3 style={{marginTop:0, fontSize:'1.1rem'}}>3. Choose Chart Type</h3>
+          <div style={{display:'flex', gap:12, marginBottom:16}}>
+            <label style={{cursor:'pointer'}}><input type="radio" name="chartType" checked={chartType === 'bar'} onChange={() => setChartType('bar')} /> Skill Comparison (Bar)</label>
+            <label style={{cursor:'pointer'}}><input type="radio" name="chartType" checked={chartType === 'line'} onChange={() => setChartType('line')} /> Progress Over Time (Line)</label>
+            <label style={{cursor:'pointer'}}><input type="radio" name="chartType" checked={chartType === 'radar'} onChange={() => setChartType('radar')} /> Skill Profile (Radar)</label>
+          </div>
+
+          <button className="primary-button" onClick={() => setShowPreview(true)} style={{width:'100%'}}>
+            Generate Report Preview
+          </button>
         </div>
 
-        <div style={{display:'flex', justifyContent:'center', marginBottom:20}}>
-          <svg 
-            ref={svgRef}
-            width="600" 
-            height="800" 
-            viewBox="0 0 600 800" 
-            style={{
-              maxWidth:'100%', 
-              height:'auto', 
-              boxShadow:'0 4px 12px rgba(0,0,0,0.1)', 
-              background:'white',
-              borderRadius: 8
-            }}
-          >
-            <rect x="0" y="0" width="600" height="800" fill="#ffffff" />
-            <rect x="0" y="0" width="600" height="20" fill="#4cc9f0" />
-            <rect x="0" y="780" width="600" height="20" fill="#4cc9f0" />
+        {/* Preview Area */}
+        {showPreview && (
+          <div style={{display:'flex', flexDirection:'column', alignItems:'center'}}>
+            <div style={{marginBottom:16, display:'flex', gap:10, flexWrap:'wrap', justifyContent:'center'}}>
+              <button className="secondary-button" onClick={handleShare}>📱 Share (IG/Text)</button>
+              <button className="secondary-button" onClick={handleDownloadImage}>📸 Save Photo</button>
+              <button className="secondary-button" onClick={handlePrint}>🖨️ Print</button>
+            </div>
 
-            <text x="300" y="70" textAnchor="middle" fontFamily="sans-serif" fontSize="28" fontWeight="bold" fill="#333">Tripp's Tricky Tetraverse</text>
-            <text x="300" y="100" textAnchor="middle" fontFamily="sans-serif" fontSize="18" fill="#666">Progress Report for {player.name || 'Player'}</text>
-            <text x="300" y="125" textAnchor="middle" fontFamily="sans-serif" fontSize="14" fill="#999">{new Date().toLocaleDateString()}</text>
-
-            <g transform="translate(50, 150)">
-              <rect x="0" y="0" width="240" height="80" rx="10" fill="#f0f8ff" stroke="#4cc9f0" strokeWidth="2" />
-              <text x="120" y="30" textAnchor="middle" fontFamily="sans-serif" fontSize="14" fill="#666">Total Points</text>
-              <text x="120" y="60" textAnchor="middle" fontFamily="sans-serif" fontSize="24" fontWeight="bold" fill="#0b3d91">{player.points || 0}</text>
-            </g>
-            <g transform="translate(310, 150)">
-              <rect x="0" y="0" width="240" height="80" rx="10" fill="#fff0f5" stroke="#ff6b6b" strokeWidth="2" />
-              <text x="120" y="30" textAnchor="middle" fontFamily="sans-serif" fontSize="14" fill="#666">Plays (Selected Range)</text>
-              <text x="120" y="60" textAnchor="middle" fontFamily="sans-serif" fontSize="24" fontWeight="bold" fill="#d63031">{totalPlays}</text>
-            </g>
-
-            <g transform="translate(50, 280)">
-              <text x="0" y="-10" fontFamily="sans-serif" fontSize="18" fontWeight="bold" fill="#333">Top Skills Built (Total Points)</text>
-              <line x1="150" y1="20" x2="150" y2="220" stroke="#ccc" />
-              <line x1="150" y1="220" x2="500" y2="220" stroke="#ccc" />
-              
-              {sortedSkills.map((skill, i) => {
-                const barWidth = (skill[1] / maxSkillScore) * 350;
-                return (
-                  <g key={skill[0]} transform={`translate(0, ${i * 35 + 30})`}>
-                    <text x="140" y="15" textAnchor="end" fontFamily="sans-serif" fontSize="12" fill="#444">{skill[0]}</text>
-                    <rect x="150" y="0" width={barWidth} height="20" fill="#4cc9f0" rx="4" />
-                    <text x={150 + barWidth + 5} y="15" fontFamily="sans-serif" fontSize="10" fill="#666">{skill[1]}</text>
-                  </g>
-                );
-              })}
-              <text x="325" y="240" textAnchor="middle" fontFamily="sans-serif" fontSize="12" fill="#999">Points Earned</text>
-            </g>
-
-            <g transform="translate(50, 560)">
-              <text x="0" y="-10" fontFamily="sans-serif" fontSize="18" fontWeight="bold" fill="#333">Activity Timeline (Points/Day)</text>
-              <line x1="40" y1="10" x2="40" y2="150" stroke="#ccc" />
-              <line x1="40" y1="150" x2="500" y2="150" stroke="#ccc" />
-              
-              {(() => {
-                if (timelineData.length < 2) return <text x="250" y="80" textAnchor="middle" fill="#999">Play more games to see a timeline!</text>;
+            <div style={{overflowX:'auto', maxWidth:'100%', border:'1px solid #eee', borderRadius:8}}>
+              <svg 
+                ref={svgRef}
+                width="800" 
+                height="1000" 
+                viewBox="0 0 800 1000" 
+                style={{
+                  background:'white',
+                  display:'block'
+                }}
+              >
+                {/* Background */}
+                <rect x="0" y="0" width="800" height="1000" fill="#ffffff" />
                 
-                const maxDaily = Math.max(...timelineData.map(d => d.score), 10);
-                const width = 460;
-                const height = 140;
+                {/* Header */}
+                <rect x="0" y="0" width="800" height="80" fill="#4cc9f0" />
+                <text x="400" y="50" textAnchor="middle" fontFamily="sans-serif" fontSize="32" fontWeight="bold" fill="white">Tripp's Tricky Tetraverse</text>
                 
-                const points = timelineData.map((d, i) => {
-                  const x = 40 + (i / (timelineData.length - 1)) * width;
-                  const y = 150 - (d.score / maxDaily) * height;
-                  return `${x},${y}`;
-                }).join(' ');
+                <text x="400" y="120" textAnchor="middle" fontFamily="sans-serif" fontSize="24" fill="#333">Progress Report: {player.name || 'Player'}</text>
+                <text x="400" y="150" textAnchor="middle" fontFamily="sans-serif" fontSize="16" fill="#666">
+                  {new Date(fromDate).toLocaleDateString()} — {new Date(toDate).toLocaleDateString()}
+                </text>
 
-                return (
-                  <>
-                    <polyline points={points} fill="none" stroke="#ff6b6b" strokeWidth="3" />
-                    {timelineData.map((d, i) => {
-                      const x = 40 + (i / (timelineData.length - 1)) * width;
-                      const y = 150 - (d.score / maxDaily) * height;
-                      return <circle key={i} cx={x} cy={y} r="4" fill="#fff" stroke="#ff6b6b" strokeWidth="2" />;
-                    })}
-                    <text x="40" y="170" textAnchor="middle" fontSize="10" fill="#666">{timelineData[0].date.slice(5)}</text>
-                    <text x="500" y="170" textAnchor="middle" fontSize="10" fill="#666">{timelineData[timelineData.length-1].date.slice(5)}</text>
-                  </>
-                );
-              })()}
-              <text x="20" y="80" textAnchor="middle" transform="rotate(-90, 20, 80)" fontFamily="sans-serif" fontSize="12" fill="#999">Points</text>
-            </g>
+                {/* Summary Stats */}
+                <g transform="translate(100, 180)">
+                  <rect x="0" y="0" width="280" height="100" rx="12" fill="#f0f8ff" stroke="#4cc9f0" strokeWidth="2" />
+                  <text x="140" y="40" textAnchor="middle" fontFamily="sans-serif" fontSize="16" fill="#666">Total Points Earned</text>
+                  <text x="140" y="80" textAnchor="middle" fontFamily="sans-serif" fontSize="36" fontWeight="bold" fill="#0b3d91">{player.points || 0}</text>
+                </g>
+                <g transform="translate(420, 180)">
+                  <rect x="0" y="0" width="280" height="100" rx="12" fill="#fff0f5" stroke="#ff6b6b" strokeWidth="2" />
+                  <text x="140" y="40" textAnchor="middle" fontFamily="sans-serif" fontSize="16" fill="#666">Games Played</text>
+                  <text x="140" y="80" textAnchor="middle" fontFamily="sans-serif" fontSize="36" fontWeight="bold" fill="#d63031">{totalPlays}</text>
+                </g>
 
-            <text x="300" y="760" textAnchor="middle" fontFamily="sans-serif" fontSize="12" fill="#ccc">tripps-tricky-tetraverse.web.app</text>
-          </svg>
-        </div>
+                {/* Chart Area */}
+                <g transform="translate(100, 350)">
+                  <rect x="-20" y="-40" width="640" height="550" fill="none" stroke="#eee" rx="8" />
+                  
+                  {/* Chart Title */}
+                  <text x="300" y="-10" textAnchor="middle" fontFamily="sans-serif" fontSize="20" fontWeight="bold" fill="#333">
+                    {chartType === 'bar' && 'Skill Breakdown (Points)'}
+                    {chartType === 'line' && 'Activity Over Time'}
+                    {chartType === 'radar' && 'Skill Profile Shape'}
+                  </text>
 
-        <div className="no-print" style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
-          <button className="primary-button" onClick={handleDownloadImage}>📸 Save as Photo</button>
-          <button className="primary-button" onClick={handlePrint}>🖨️ Print / PDF</button>
-          <button className="secondary-button" onClick={handleShare}>📱 Share (IG/Mobile)</button>
-          <button className="secondary-button" onClick={handleCopyText}>📋 Copy Text</button>
-        </div>
+                  {/* BAR CHART LOGIC */}
+                  {chartType === 'bar' && (
+                    <>
+                      {/* Y Axis */}
+                      <line x1="0" y1="0" x2="0" y2="400" stroke="#333" strokeWidth="2" />
+                      <text x="-10" y="10" textAnchor="end" fontSize="12">Max</text>
+                      <text x="-10" y="400" textAnchor="end" fontSize="12">0</text>
+                      <text x="-30" y="200" textAnchor="middle" transform="rotate(-90, -30, 200)" fontSize="14" fill="#666">Total Points</text>
+
+                      {/* X Axis */}
+                      <line x1="0" y1="400" x2="600" y2="400" stroke="#333" strokeWidth="2" />
+                      
+                      {selectedSkills.length === 0 ? (
+                        <text x="300" y="200" textAnchor="middle" fill="#999">Select skills above to see data</text>
+                      ) : (
+                        selectedSkills.map((skill, i) => {
+                          const score = skills[skill] || 0;
+                          const barHeight = (score / (maxSkillScore || 1)) * 380;
+                          const barWidth = Math.min(60, 500 / selectedSkills.length);
+                          const x = 40 + i * (600 / selectedSkills.length);
+                          
+                          return (
+                            <g key={skill}>
+                              <rect x={x} y={400 - barHeight} width={barWidth} height={barHeight} fill="#4cc9f0" rx="4" />
+                              <text x={x + barWidth/2} y={390 - barHeight} textAnchor="middle" fontSize="12" fill="#333">{score}</text>
+                              <text 
+                                x={x + barWidth/2} 
+                                y={420} 
+                                textAnchor="end" 
+                                transform={`rotate(-45, ${x + barWidth/2}, 420)`} 
+                                fontSize="12" 
+                                fill="#333"
+                              >
+                                {skill}
+                              </text>
+                            </g>
+                          );
+                        })
+                      )}
+                    </>
+                  )}
+
+                  {/* LINE CHART LOGIC */}
+                  {chartType === 'line' && (
+                    <>
+                      {/* Axes */}
+                      <line x1="0" y1="0" x2="0" y2="400" stroke="#333" strokeWidth="2" />
+                      <line x1="0" y1="400" x2="600" y2="400" stroke="#333" strokeWidth="2" />
+                      <text x="-30" y="200" textAnchor="middle" transform="rotate(-90, -30, 200)" fontSize="14" fill="#666">Points / Day</text>
+                      <text x="300" y="440" textAnchor="middle" fontSize="14" fill="#666">Date</text>
+
+                      {timelineData.length < 2 ? (
+                        <text x="300" y="200" textAnchor="middle" fill="#999">Not enough data for a timeline.</text>
+                      ) : (
+                        (() => {
+                          const maxDaily = Math.max(...timelineData.map(d => d.score), 10);
+                          const width = 600;
+                          const height = 400;
+                          
+                          const points = timelineData.map((d, i) => {
+                            const x = (i / (timelineData.length - 1)) * width;
+                            const y = height - (d.score / maxDaily) * height;
+                            return `${x},${y}`;
+                          }).join(' ');
+
+                          return (
+                            <>
+                              {/* Grid lines */}
+                              <line x1="0" y1="0" x2="600" y2="0" stroke="#eee" />
+                              <line x1="0" y1="200" x2="600" y2="200" stroke="#eee" />
+                              <text x="-10" y="5" textAnchor="end" fontSize="10">{maxDaily}</text>
+                              <text x="-10" y="205" textAnchor="end" fontSize="10">{Math.round(maxDaily/2)}</text>
+
+                              <polyline points={points} fill="none" stroke="#ff6b6b" strokeWidth="3" />
+                              {timelineData.map((d, i) => {
+                                const x = (i / (timelineData.length - 1)) * width;
+                                const y = height - (d.score / maxDaily) * height;
+                                return (
+                                  <g key={i}>
+                                    <circle cx={x} cy={y} r="4" fill="#fff" stroke="#ff6b6b" strokeWidth="2" />
+                                    {/* Only show date label for first, last, and middle */}
+                                    {(i === 0 || i === timelineData.length - 1 || i === Math.floor(timelineData.length/2)) && (
+                                      <text x={x} y={420} textAnchor="middle" fontSize="10" fill="#666">{d.date.slice(5)}</text>
+                                    )}
+                                  </g>
+                                );
+                              })}
+                            </>
+                          );
+                        })()
+                      )}
+                    </>
+                  )}
+
+                  {/* RADAR CHART LOGIC */}
+                  {chartType === 'radar' && (
+                    <g transform="translate(300, 200)">
+                      {selectedSkills.length < 3 ? (
+                        <text x="0" y="0" textAnchor="middle" fill="#999">Select at least 3 skills for a radar chart.</text>
+                      ) : (
+                        (() => {
+                          const radius = 180;
+                          const angleStep = (Math.PI * 2) / selectedSkills.length;
+                          
+                          // Draw web
+                          const webPoints = selectedSkills.map((_, i) => {
+                            const angle = i * angleStep - Math.PI / 2;
+                            return `${Math.cos(angle) * radius},${Math.sin(angle) * radius}`;
+                          }).join(' ');
+                          
+                          // Draw data polygon
+                          const dataPoints = selectedSkills.map((skill, i) => {
+                            const angle = i * angleStep - Math.PI / 2;
+                            const val = (skills[skill] || 0) / (maxSkillScore || 1);
+                            return `${Math.cos(angle) * radius * val},${Math.sin(angle) * radius * val}`;
+                          }).join(' ');
+
+                          return (
+                            <>
+                              {/* Background Web */}
+                              <polygon points={webPoints} fill="#f9f9f9" stroke="#ddd" strokeWidth="1" />
+                              {[0.25, 0.5, 0.75].map(r => (
+                                <polygon 
+                                  key={r}
+                                  points={selectedSkills.map((_, i) => {
+                                    const angle = i * angleStep - Math.PI / 2;
+                                    return `${Math.cos(angle) * radius * r},${Math.sin(angle) * radius * r}`;
+                                  }).join(' ')}
+                                  fill="none" stroke="#eee" strokeWidth="1"
+                                />
+                              ))}
+
+                              {/* Axes and Labels */}
+                              {selectedSkills.map((skill, i) => {
+                                const angle = i * angleStep - Math.PI / 2;
+                                const x = Math.cos(angle) * radius;
+                                const y = Math.sin(angle) * radius;
+                                const labelX = Math.cos(angle) * (radius + 20);
+                                const labelY = Math.sin(angle) * (radius + 20);
+                                return (
+                                  <g key={skill}>
+                                    <line x1="0" y1="0" x2={x} y2={y} stroke="#ddd" />
+                                    <text 
+                                      x={labelX} 
+                                      y={labelY} 
+                                      textAnchor={labelX > 0 ? 'start' : labelX < 0 ? 'end' : 'middle'} 
+                                      dominantBaseline="middle"
+                                      fontSize="12" 
+                                      fill="#333"
+                                    >
+                                      {skill}
+                                    </text>
+                                  </g>
+                                );
+                              })}
+
+                              {/* Data Shape */}
+                              <polygon points={dataPoints} fill="rgba(76, 201, 240, 0.5)" stroke="#4cc9f0" strokeWidth="2" />
+                            </>
+                          );
+                        })()
+                      )}
+                    </g>
+                  )}
+
+                </g>
+
+                {/* Footer */}
+                <rect x="0" y="950" width="800" height="50" fill="#f0f0f0" />
+                <text x="400" y="980" textAnchor="middle" fontFamily="sans-serif" fontSize="14" fill="#999">tripps-tricky-tetraverse.web.app</text>
+              </svg>
+            </div>
+          </div>
+        )}
         
         <div className="no-print" style={{marginTop:16}}>
            <FooterBrand />
