@@ -11,22 +11,35 @@
     <!-- Basic, responsive, accessible-friendly styles -->
     <style>
       :root {
-        /* Child-friendly pastel rainbow palette */
+        /* Child-friendly Arcade Palette */
         color-scheme: light;
-        --bg: #fff7f0; /* soft peach */
-        --bg-soft: #fff1e6;
-        --card-bg: #ffffff;
-        --card-border: rgba(255, 148, 114, 0.18);
-        --accent: #ff7a8a; /* coral */
-        --accent-soft: rgba(255, 122, 138, 0.12);
-        --accent-strong: #ff4d6d;
-        --text-main: #12263a; /* deep navy for text */
+        --bg-primary: #0b3d91;
+        --bg-panel: #ffffff;
+        --color-accent: #ff6b6b;
+        --color-accent-hover: #ff4757;
+        --color-secondary: #4cc9f0;
+        --color-text-main: #0b3d91;
+        --color-text-light: #ffffff;
+        --color-border: #4cc9f0;
+        
+        --shadow-card: 0 10px 0 rgba(0,0,0,0.15);
+        --shadow-btn: 0 6px 0 #0056b3;
+        
+        /* Legacy variables mapping for compatibility */
+        --bg: var(--bg-primary);
+        --bg-soft: #e6f7ff;
+        --card-bg: var(--bg-panel);
+        --card-border: var(--color-border);
+        --accent: var(--color-accent);
+        --accent-soft: rgba(255, 107, 107, 0.12);
+        --accent-strong: var(--color-accent-hover);
+        --text-main: var(--color-text-main);
         --text-muted: #425261;
         --danger: #ff6b6b;
-        --radius-lg: 18px;
-        --radius-sm: 12px;
-        --shadow-soft: 0 18px 40px rgba(18, 38, 58, 0.06);
-        --shadow-subtle: 0 8px 20px rgba(18, 38, 58, 0.05);
+        --radius-lg: 32px;
+        --radius-sm: 16px;
+        --shadow-soft: var(--shadow-card);
+        --shadow-subtle: 0 4px 10px rgba(0,0,0,0.1);
         --brand-darkgreen: #0b5b35;
       }
 
@@ -41,11 +54,13 @@
         height: 100%;
         font-family: "Shooting Star", "Comic Sans MS", "Trebuchet MS",
           "Segoe UI", sans-serif;
-        background-color: #0b3d91;
-        background-image: radial-gradient(#ffffff 12%, transparent 13%),
-          radial-gradient(#ffffff 12%, transparent 13%);
-        background-position: 0 0, 18px 18px;
-        background-size: 36px 36px;
+        background-color: var(--bg-primary);
+        background-image: 
+          radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px),
+          radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 2px),
+          radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
+        background-size: 550px 550px, 350px 350px, 250px 250px;
+        background-position: 0 0, 40px 60px, 130px 270px;
         color: var(--text-main);
       }
 
@@ -310,7 +325,7 @@
       }
 
       .music-choice-section {
-        max-width: 620px;
+        max-width: 1100px;
         text-align: center;
       }
 

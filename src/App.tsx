@@ -171,6 +171,7 @@ const App: React.FC = () => {
   });
   const [isMusicPlaying, setIsMusicPlaying] = useState<boolean>(false);
   const musicRef = useRef<HTMLAudioElement | null>(null);
+  const currentMusicKeyRef = useRef<string | null>(null);
   const prevVolumeRef = useRef<number>(musicVolume || 0.45);
 
   const [showParentalReport, setShowParentalReport] = useState<boolean>(false);
@@ -425,6 +426,14 @@ const App: React.FC = () => {
 
   // Background music control helpers
   const setBackgroundMusic = (key: string, autoplay = true) => {
+    // if same music is already active, just ensure it plays if requested
+    if (musicRef.current && currentMusicKeyRef.current === key) {
+      if (autoplay && musicRef.current.paused) {
+        musicRef.current.play().then(() => setIsMusicPlaying(true)).catch(() => setIsMusicPlaying(false));
+      }
+      return;
+    }
+
     // stop previous
     if (musicRef.current) {
       try {
@@ -437,6 +446,7 @@ const App: React.FC = () => {
     }
 
     setMusicKey(key);
+    currentMusicKeyRef.current = key;
     // if the user has a player profile and chose to remember, persist to their profile
     if (rememberMusic) {
       setPlayer((p) => ({ ...p, musicKey: key, musicVolume: musicVolume }));
@@ -542,7 +552,8 @@ const App: React.FC = () => {
               onClick={() => setShowParentOverlay(true)}
               aria-label="Open information for parents"
             >
-              Information for Parents
+              <span style={{ fontSize: '1.5rem', marginRight: '0.5rem' }}>🛡️</span>
+              Parents
             </button>
           </li>
           <li>
@@ -552,6 +563,7 @@ const App: React.FC = () => {
               onClick={() => setShowPlayersOverlay(true)}
               aria-label="Players"
             >
+              <span style={{ fontSize: '1.5rem', marginRight: '0.5rem' }}>👤</span>
               Players
             </button>
           </li>
@@ -562,6 +574,7 @@ const App: React.FC = () => {
               onClick={() => setShowAboutOverlay(true)}
               aria-label="About this app"
             >
+              <span style={{ fontSize: '1.5rem', marginRight: '0.5rem' }}>ℹ️</span>
               About
             </button>
           </li>

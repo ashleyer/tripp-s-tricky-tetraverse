@@ -3,9 +3,25 @@
   line-height: 1.5;
   font-weight: 400;
 
+  /* Child-friendly Arcade Palette */
+  --color-space-blue: #0b3d91;
+  --color-star-white: #ffffff;
+  --color-nebula-pink: #ff6b6b;
+  --color-planet-orange: #ffb347;
+  --color-alien-green: #7ed957;
+  --color-comet-blue: #4cc9f0;
+  --color-sun-yellow: #ffd93d;
+  
+  --bg-primary: var(--color-space-blue);
+  --text-primary: #1a1a1a;
+  --text-light: #ffffff;
+  
+  --radius-xl: 24px;
+  --shadow-pop: 0 8px 0 rgba(0,0,0,0.2);
+
   color-scheme: light;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #fffefb;
+  background-color: var(--bg-primary);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
