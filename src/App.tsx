@@ -194,6 +194,8 @@ const App: React.FC = () => {
   const [uploadedAvatarPreview, setUploadedAvatarPreview] = useState<
     string | null
   >(null);
+  // Silence unused warning for now as we might use it later or refactor further
+  useEffect(() => { if(uploadedAvatarPreview) {} }, [uploadedAvatarPreview]);
 
   // Timer effect for screen time
   useEffect(() => {
@@ -219,13 +221,6 @@ const App: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [screenTime.isActive, screenTime.remainingSeconds]);
-
-  const screenTimeFriendly = useMemo(() => {
-    if (!screenTime.limitMinutes) return "No limit set";
-    const mins = Math.floor(screenTime.remainingSeconds / 60);
-    const secs = screenTime.remainingSeconds % 60;
-    return `${mins}m ${secs.toString().padStart(2, "0")}s remaining`;
-  }, [screenTime]);
 
   // Derived “performance” feedback – purely playful & approximate.
   const performanceSummary = useMemo(() => {
@@ -278,39 +273,6 @@ const App: React.FC = () => {
 
     return lines.join(' · ');
   }, [player.age, gameResults]);
-
-  const handleAvatarUpload: React.ChangeEventHandler<HTMLInputElement> = (
-    event
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setUploadedAvatarPreview(url);
-    setPlayer((prev) => ({ ...prev, avatarUrl: url }));
-  };
-
-  const handleScreenTimeSubmit: React.FormEventHandler<HTMLFormElement> = (
-    e
-  ) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const minutesRaw = formData.get("screenTimeMinutes");
-    const minutes = Number(minutesRaw);
-    if (!minutes || minutes <= 0) {
-      setScreenTime({
-        limitMinutes: null,
-        remainingSeconds: 0,
-        isActive: false,
-      });
-      return;
-    }
-    playSound("click");
-    setScreenTime({
-      limitMinutes: minutes,
-      remainingSeconds: minutes * 60,
-      isActive: true,
-    });
-  };
 
   const isLockedByScreenTime =
     screenTime.limitMinutes !== null &&
@@ -542,143 +504,48 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Overlay buttons below title banner */}
-      <nav className="main-overlay-nav" aria-label="App info and settings">
-        <ul className="overlay-list">
-          <li>
-            <button
-              type="button"
-              className="parent-button overlay-nav-btn"
-              onClick={() => setShowParentOverlay(true)}
-              aria-label="Open information for parents"
-            >
-              <span style={{ fontSize: '1.5rem', marginRight: '0.5rem' }}>🛡️</span>
-              Parents
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              className="parent-button overlay-nav-btn"
-              onClick={() => setShowPlayersOverlay(true)}
-              aria-label="Players"
-            >
-              <span style={{ fontSize: '1.5rem', marginRight: '0.5rem' }}>👤</span>
-              Players
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              className="parent-button overlay-nav-btn"
-              onClick={() => setShowAboutOverlay(true)}
-              aria-label="About this app"
-            >
-              <span style={{ fontSize: '1.5rem', marginRight: '0.5rem' }}>ℹ️</span>
-              About
-            </button>
-          </li>
-        </ul>
-      </nav>
+      {/* NEW TOP CONTROL BAR */}
+      <div className="top-control-bar">
+        <button 
+          className="player-widget" 
+          onClick={() => setShowPlayersOverlay(true)}
+          aria-label="Player settings"
+        >
+          <span className="player-avatar-icon">
+            {player.avatarUrl && player.avatarUrl.startsWith('preloaded:') 
+              ? PRELOADED_AVATARS.find(a => `preloaded:${a.id}` === player.avatarUrl)?.emoji 
+              : (player.avatarUrl ? '📷' : '🙂')}
+          </span>
+          <span className="player-name-label">{player.name || "Player"}</span>
+        </button>
 
-      {/* Music choice section below overlays */}
-      <section className="music-choice-section" aria-label="Background music selection">
-        <h2 className="music-choice-title">🎵 Choose Your Arcade Music</h2>
-        <p className="music-choice-prompt">Pick a background tune for your play session. You can change it anytime!</p>
-        <div className="music-thumbnails-row">
-          {MUSIC_TRACKS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              className={`music-tile design-music-tile ${musicKey === t.key ? 'music-tile-selected' : ''}`}
-              onClick={() => {
-                playSound('click');
-                setMusicKey(t.key);
-                setBackgroundMusic(t.key, true);
-                try {
-                  if (rememberMusic) {
-                    localStorage.setItem('musicKey', t.key);
-                    setPlayer((p) => ({ ...p, musicKey: t.key, musicVolume }));
-                  }
-                } catch (e) {}
-              }}
-              aria-pressed={musicKey === t.key}
-              aria-label={`Choose ${t.label} music`}
-            >
-              <span aria-hidden style={{ fontSize: '1.5rem', display:'block' }}>{t.emoji}</span>
-              <span className="music-label" style={{ fontSize: '1rem', marginTop: 4 }}>{t.label}</span>
-            </button>
-          ))}
-        </div>
-        <div className="music-controls-row">
-          <button
-            type="button"
-            className="secondary-button design-music-btn"
-            onClick={() => toggleMusicPlay()}
-            aria-pressed={isMusicPlaying}
-            aria-label={isMusicPlaying ? 'Pause background music' : 'Play background music'}
-            title={isMusicPlaying ? 'Pause music' : 'Play music'}
-          >
-            {isMusicPlaying ? '⏸️ Pause' : '▶️ Play'}
+        {/* Compact Music Bar */}
+        <div className="compact-music-bar">
+          <button className="music-toggle-btn" onClick={toggleMusicPlay}>
+            {isMusicPlaying ? '⏸' : '▶️'}
           </button>
-          <button
-            type="button"
-            className="secondary-button design-music-btn volume-icon"
-            onClick={() => {
-              if (musicVolume > 0) {
-                prevVolumeRef.current = musicVolume;
-                setMusicVolume(0);
-                if (musicRef.current) musicRef.current.volume = 0;
-              } else {
-                const restore = prevVolumeRef.current || 0.45;
-                setMusicVolume(restore);
-                if (musicRef.current) musicRef.current.volume = restore;
-              }
-            }}
-            aria-label={musicVolume > 0 ? 'Mute' : 'Unmute'}
-            title={musicVolume > 0 ? 'Mute' : 'Unmute'}
-          >
-            {musicVolume === 0 ? '🔇 Mute' : musicVolume < 0.33 ? '🔈 Low' : musicVolume < 0.66 ? '🔉 Med' : '🔊 Loud'}
-          </button>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={Math.round(musicVolume * 100)}
-            onChange={(e) => {
-              const v = Number(e.currentTarget.value) / 100;
-              if (v > 0) prevVolumeRef.current = v;
-              setMusicVolume(v);
-              if (musicRef.current) musicRef.current.volume = v;
-              try {
-                if (rememberMusic) localStorage.setItem('musicVolume', String(v));
-              } catch (e) {}
-            }}
-            aria-label="Music volume"
-            className="music-volume-slider"
-          />
-          <label className="music-remember-label">
-            <input
-              type="checkbox"
-              checked={rememberMusic}
-              onChange={(e) => {
-                const v = e.currentTarget.checked;
-                setRememberMusic(v);
-                try {
-                  localStorage.setItem('rememberMusic', v ? '1' : '0');
-                  if (v) {
-                    setPlayer((p) => ({ ...p, musicKey, musicVolume }));
-                  } else {
-                    localStorage.removeItem('musicKey');
-                    localStorage.removeItem('musicVolume');
-                  }
-                } catch (e) {}
-              }}
-            />
-            Remember
-          </label>
+          <div className="music-track-selector">
+             {MUSIC_TRACKS.map(t => (
+               <button 
+                 key={t.key}
+                 className={`mini-music-dot ${musicKey === t.key ? 'active' : ''}`}
+                 onClick={() => setBackgroundMusic(t.key, true)}
+                 title={t.label}
+               >
+                 {t.emoji}
+               </button>
+             ))}
+          </div>
         </div>
-      </section>
+
+        <button 
+          className="parent-widget-btn" 
+          onClick={() => setShowParentOverlay(true)}
+          aria-label="Parent settings"
+        >
+          🛡️
+        </button>
+      </div>
 
       {showIntro && (
         <IntroBanner
@@ -690,172 +557,6 @@ const App: React.FC = () => {
 
       {/* ARIA live region for dynamic announcements */}
       <div aria-live="polite" aria-atomic="true" style={{position:'absolute',left:-9999,top:'auto',width:1,height:1,overflow:'hidden'}}> {announceText} </div>
-
-      {/* Player Profile Section */}
-      <section className="profile-section" aria-label="Player profile">
-        <div className="profile-card">
-          <h2>Player Profile</h2>
-          <div className="profile-grid">
-            <div className="profile-main">
-              <label className="form-label">
-                Name
-                <input
-                  type="text"
-                  placeholder="Type your name"
-                  value={player.name}
-                  onChange={(e) =>
-                    setPlayer((prev) => ({ ...prev, name: e.target.value }))
-                  }
-                  aria-label="Player name"
-                />
-              </label>
-              <label className="form-label">
-                Age
-                <input
-                  type="number"
-                  min={3}
-                  max={12}
-                  placeholder="Age"
-                  value={player.age ?? ""}
-                  onChange={(e) =>
-                    setPlayer((prev) => ({
-                      ...prev,
-                      age: e.target.value ? Number(e.target.value) : null,
-                    }))
-                  }
-                  aria-label="Player age"
-                />
-              </label>
-
-              <form
-                className="screen-time-form"
-                onSubmit={handleScreenTimeSubmit}
-                aria-label="Screen time limit form"
-              >
-                <label className="form-label">
-                  Screen time limit (minutes)
-                  <input
-                    type="number"
-                    min={1}
-                    max={120}
-                    name="screenTimeMinutes"
-                    placeholder="e.g. 20"
-                    aria-label="Screen time limit in minutes"
-                  />
-                </label>
-                <button type="submit" className="primary-button">
-                  Set / Update Limit
-                </button>
-              </form>
-
-              <p className="screen-time-status" aria-live="polite">
-                ⏱ {screenTimeFriendly}
-                {isLockedByScreenTime && (
-                  <span className="screen-time-locked">
-                    {" "}
-                    – Screen time is up for now. Time for a stretch, snack, or
-                    book!
-                  </span>
-                )}
-              </p>
-            </div>
-
-            <div className="avatar-column">
-              <p className="avatar-title">Choose an avatar</p>
-              <div
-                className="avatar-list"
-                role="list"
-                aria-label="Preloaded avatar choices"
-              >
-                {PRELOADED_AVATARS.map((avatar) => {
-                  const isSelected =
-                    player.avatarUrl === `preloaded:${avatar.id}`;
-                  return (
-                    <button
-                      key={avatar.id}
-                      type="button"
-                      role="listitem"
-                      className={`avatar-pill ${
-                        isSelected ? "avatar-pill-selected" : ""
-                      }`}
-                      onClick={() => {
-                        playSound("click");
-                        setPlayer((prev) => ({
-                          ...prev,
-                          avatarUrl: `preloaded:${avatar.id}`,
-                        }));
-                        setUploadedAvatarPreview(null);
-                      }}
-                      aria-pressed={isSelected}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="avatar-emoji"
-                        role="img"
-                      >
-                        {avatar.emoji}
-                      </span>
-                      <span className="avatar-label">{avatar.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="avatar-upload-wrapper">
-                <label className="form-label">
-                  Or upload a photo (stays on this device only)
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    aria-label="Upload custom avatar from this device"
-                  />
-                </label>
-              </div>
-
-              <div className="avatar-preview">
-                <p className="avatar-title">Current avatar</p>
-                <div className="avatar-preview-box">
-                  {player.avatarUrl ? (
-                    player.avatarUrl.startsWith("preloaded:") ? (
-                      <span className="avatar-preview-emoji" aria-hidden="true">
-                        {
-                          PRELOADED_AVATARS.find(
-                            (a) => `preloaded:${a.id}` === player.avatarUrl
-                          )?.emoji
-                        }
-                      </span>
-                    ) : (
-                      <img
-                        src={uploadedAvatarPreview ?? player.avatarUrl}
-                        alt="Player avatar preview"
-                      />
-                    )
-                  ) : (
-                    <span className="avatar-placeholder" aria-hidden="true">
-                      🙂
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <p className="profile-note">
-            We don’t send your child’s name, age, or avatar anywhere. Everything
-            stays right here in this browser tab.
-          </p>
-        </div>
-      </section>
-
-      {/* Performance summary */}
-      <section
-        className="performance-section"
-        aria-label="Performance summary compared to age group"
-      >
-        <h2>Your Skill Snapshot</h2>
-        <p>{performanceSummary}</p>
-      </section>
 
       {/* Arcade vs specific game */}
       {showArcade ? (
@@ -896,6 +597,15 @@ const App: React.FC = () => {
           onOpenReport={() => {
             setShowParentOverlay(false);
             setShowParentalReport(true);
+          }}
+          screenTime={screenTime}
+          onSetScreenTime={(min) => {
+            playSound("click");
+            setScreenTime({
+              limitMinutes: min,
+              remainingSeconds: min * 60,
+              isActive: true,
+            });
           }}
         />
       )}
@@ -944,6 +654,7 @@ const App: React.FC = () => {
             setPlayer(p);
             setShowPlayersOverlay(false);
           }}
+          performanceSummary={performanceSummary}
         />
       )}
 
@@ -1244,10 +955,19 @@ const GameView: React.FC<GameViewProps> = ({
 interface ParentOverlayProps {
   onClose: () => void;
   onOpenReport?: () => void;
+  screenTime: ScreenTimeState;
+  onSetScreenTime: (minutes: number) => void;
 }
 
-const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport }) => {
+const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport, screenTime, onSetScreenTime }) => {
   const [showDetails, setShowDetails] = useState<boolean>(false);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const min = Number(formData.get('minutes'));
+    if (min > 0) onSetScreenTime(min);
+  };
 
   return (
     <div
@@ -1258,29 +978,29 @@ const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport }) 
     >
       <div className="modal-content parent-modal-content">
         <h2>For Parents & Caregivers</h2>
+        
+        <div style={{background: 'rgba(30, 80, 200, 0.06)', padding: '1rem', borderRadius: '12px', marginBottom: '1rem'}}>
+          <h3 style={{marginTop:0, fontSize:'1.1rem'}}>Screen Time Controls</h3>
+          <form onSubmit={handleSubmit} style={{display:'flex', gap:'8px', alignItems:'flex-end'}}>
+            <label className="form-label" style={{marginBottom:0}}>
+              Set Limit (minutes)
+              <input type="number" name="minutes" min="1" max="120" placeholder="e.g. 20" style={{width:'100px'}} />
+            </label>
+            <button type="submit" className="primary-button" style={{padding:'0.5rem 1rem', fontSize:'0.9rem'}}>Set</button>
+          </form>
+          <p style={{fontSize:'0.9rem', color:'var(--text-muted)', marginTop:'8px'}}>
+            {screenTime.isActive 
+              ? `Time remaining: ${Math.floor(screenTime.remainingSeconds / 60)}m ${screenTime.remainingSeconds % 60}s` 
+              : screenTime.limitMinutes ? "Time's up!" : "No active limit."}
+          </p>
+        </div>
+
         <p>
           This little arcade was designed to be <strong>gentle, low-pressure, and kid-friendly</strong>.
           There are no ads, no in-app purchases, and no hidden chats. Everything runs locally in your child’s browser.
         </p>
-        <ul>
-          <li>
-            <strong>Screen time limit:</strong> You can set a session time limit in minutes. When time is up, games pause with a friendly reminder to take a break.
-          </li>
-          <li>
-            <strong>Data & privacy:</strong> Player names, ages, and avatars never leave this device. There is no sign-in and no tracking.
-          </li>
-          <li>
-            <strong>Skill snapshots (not real testing):</strong> The “how you’re doing” messages are just playful estimates based on simple scores.
-          </li>
-          <li>
-            <strong>Safety & tone:</strong> All content is non-violent and non-competitive.
-          </li>
-        </ul>
-        <p>
-          Please stay nearby while kids play — treat this as a fun add-on, not a babysitter. Real-world play and connection matter most.
-        </p>
-
-        <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+        
+        <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button type="button" className="secondary-button" onClick={() => setShowDetails((s) => !s)} aria-expanded={showDetails}>
             {showDetails ? 'Hide details' : 'More info'}
           </button>
@@ -1296,7 +1016,7 @@ const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport }) 
             autoFocus
             style={{ marginLeft: 'auto' }}
           >
-            Got it – let’s play
+            Close
           </button>
         </div>
 
@@ -1439,65 +1159,120 @@ interface PlayersOverlayProps {
   player: PlayerProfile;
   onClose: () => void;
   onSave: (player: PlayerProfile) => void;
+  performanceSummary: string;
 }
 
-const PlayersOverlay: React.FC<PlayersOverlayProps> = ({ player, onClose, onSave }) => {
+const PlayersOverlay: React.FC<PlayersOverlayProps> = ({ player, onClose, onSave, performanceSummary }) => {
   const [local, setLocal] = useState<PlayerProfile>(player);
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setUploadPreview(url);
+      setLocal(prev => ({ ...prev, avatarUrl: url }));
+    }
+  };
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal-content">
+      <div className="modal-content" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <h2>Player Profile</h2>
-        <p style={{fontSize:'0.95rem'}}>Points: <strong>{local.points ?? 0}</strong></p>
+        
+        <div className="profile-grid" style={{ marginBottom: '1rem' }}>
+          <div className="avatar-column">
+            <p className="avatar-title">Choose Avatar</p>
+            <div className="avatar-list">
+              {PRELOADED_AVATARS.map((avatar) => {
+                const isSelected = local.avatarUrl === `preloaded:${avatar.id}`;
+                return (
+                  <button
+                    key={avatar.id}
+                    type="button"
+                    className={`avatar-pill ${isSelected ? "avatar-pill-selected" : ""}`}
+                    onClick={() => {
+                      playSound("click");
+                      setLocal((prev) => ({ ...prev, avatarUrl: `preloaded:${avatar.id}` }));
+                      setUploadPreview(null);
+                    }}
+                  >
+                    <span className="avatar-emoji">{avatar.emoji}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <label className="form-label" style={{marginTop:8}}>
+              Upload Photo
+              <input type="file" accept="image/*" onChange={handleFileChange} />
+            </label>
+            <div className="avatar-preview-box">
+              {local.avatarUrl ? (
+                local.avatarUrl.startsWith("preloaded:") ? (
+                  <span className="avatar-preview-emoji">
+                    {PRELOADED_AVATARS.find((a) => `preloaded:${a.id}` === local.avatarUrl)?.emoji}
+                  </span>
+                ) : (
+                  <img src={uploadPreview ?? local.avatarUrl} alt="Preview" />
+                )
+              ) : (
+                <span className="avatar-placeholder">🙂</span>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="form-label">
+              Name
+              <input
+                type="text"
+                value={local.name}
+                onChange={(e) => setLocal((s) => ({ ...s, name: e.target.value }))}
+              />
+            </label>
+            <label className="form-label">
+              Age
+              <input
+                type="number"
+                min={3}
+                max={12}
+                value={local.age ?? ""}
+                onChange={(e) =>
+                  setLocal((s) => ({ ...s, age: e.target.value ? Number(e.target.value) : null }))
+                }
+              />
+            </label>
+          </div>
+        </div>
+
+        <div style={{ background: 'rgba(0,0,0,0.03)', padding: '12px', borderRadius: '12px', marginBottom: '1rem' }}>
+          <h3 style={{fontSize:'1rem', margin:'0 0 6px 0'}}>Skill Snapshot</h3>
+          <p style={{fontSize:'0.9rem', margin:0, color:'var(--text-muted)'}}>{performanceSummary}</p>
+        </div>
+
         <div style={{marginTop:8}}>
           <strong>Inventory:</strong>
-          <div style={{marginTop:6}}>
+          <div style={{marginTop:6, marginBottom: 12}}>
             {(local.inventory && local.inventory.length) ? (
-              <ul>
+              <ul style={{margin:0, paddingLeft: 20}}>
                 {local.inventory.map((it, i) => <li key={i}>{it}</li>)}
               </ul>
             ) : (
-              <div style={{color:'var(--text-muted)'}}>No redeemed items yet.</div>
+              <div style={{color:'var(--text-muted)', fontSize:'0.9rem'}}>No redeemed items yet.</div>
             )}
           </div>
         </div>
-        <label className="form-label">
-          Name
-          <input
-            type="text"
-            value={local.name}
-            onChange={(e) => setLocal((s) => ({ ...s, name: e.target.value }))}
-          />
-        </label>
-        <label className="form-label">
-          Age
-          <input
-            type="number"
-            min={3}
-            max={12}
-            value={local.age ?? ""}
-            onChange={(e) =>
-              setLocal((s) => ({ ...s, age: e.target.value ? Number(e.target.value) : null }))
-            }
-          />
-        </label>
-        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem" }}>
-          <button
-            className="primary-button"
-            onClick={() => onSave(local)}
-          >
-            Save
-          </button>
-          <button className="secondary-button" onClick={onClose}>
-            Cancel
-          </button>
+
+        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem", flexWrap: 'wrap' }}>
+          <button className="primary-button" onClick={() => onSave(local)}>Save Profile</button>
+          <button className="secondary-button" onClick={onClose}>Cancel</button>
           <button
             className="secondary-button"
             onClick={() => {
-              // open prize shop by emitting a custom event on window; parent App listens
               window.dispatchEvent(new CustomEvent('openPrizeShop'));
             }}
           >
-            Prize Shop
+            Prize Shop ({local.points ?? 0} pts)
           </button>
         </div>
         <FooterBrand />
