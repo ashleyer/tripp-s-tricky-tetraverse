@@ -8,6 +8,9 @@ type PlayerProfile = {
   avatarUrl: string | null;
   points?: number;
   learningProfile?: Record<string, number>;
+  // optional per-player audio preferences
+  musicKey?: string;
+  musicVolume?: number;
 };
 
 type GameResult = {
@@ -20,6 +23,7 @@ type GameResult = {
     waldorf: string[];
     intelligences: string[];
   };
+  metrics?: Record<string, number>;
 };
 
 type ScreenTimeState = {
@@ -100,14 +104,14 @@ const soundPaths: Record<string, string> = {
   fail: `${_BASE}sounds/fail.mp3`,
 };
 
-// Background music choices. Place matching .mp3 files in `public/music/`.
+// Background music choices. Use the app `public/sounds/` folder for bundled tracks.
 const MUSIC_TRACKS: { key: string; label: string; emoji: string; path: string }[] = [
   { key: "silent", label: "Silent", emoji: "🔇", path: "" },
-  { key: "tides", label: "Tides", emoji: "🌊", path: `${_BASE}music/tides-and-smiles.mp3` },
-  { key: "happy", label: "Happy", emoji: "☀️", path: `${_BASE}music/happy-day.mp3` },
-  { key: "playful", label: "Playful", emoji: "🎈", path: `${_BASE}music/playful.mp3` },
-  { key: "chill", label: "Chill", emoji: "🌴", path: `${_BASE}music/chill-pulse.mp3` },
-  { key: "love", label: "Love", emoji: "💖", path: `${_BASE}music/love-in-japan.mp3` },
+  { key: "tides", label: "Tides", emoji: "🌊", path: `${_BASE}sounds/tides-and-smiles.mp3` },
+  { key: "happy", label: "Happy", emoji: "☀️", path: `${_BASE}sounds/happy-day.mp3` },
+  { key: "playful", label: "Playful", emoji: "🎈", path: `${_BASE}sounds/playful.mp3` },
+  { key: "chill", label: "Chill", emoji: "🌴", path: `${_BASE}sounds/chill-pulse.mp3` },
+  { key: "love", label: "Love", emoji: "💖", path: `${_BASE}sounds/love-in-japan.mp3` },
 ];
 
 function playSound(key: keyof typeof soundPaths) {
@@ -147,15 +151,16 @@ const App: React.FC = () => {
   }>({ gameId: null, visible: false });
   const [musicKey, setMusicKey] = useState<string>(() => {
     try {
-      return localStorage.getItem("musicKey") || "silent";
+      return player.musicKey || localStorage.getItem("musicKey") || "silent";
     } catch (e) {
       return "silent";
     }
   });
   const [musicVolume, setMusicVolume] = useState<number>(() => {
     try {
-      const v = localStorage.getItem("musicVolume");
-      return v ? Number(v) : 0.45;
+      return typeof player.musicVolume === 'number'
+        ? player.musicVolume
+        : Number(localStorage.getItem("musicVolume") || 0.45);
     } catch (e) {
       return 0.45;
     }
@@ -170,6 +175,10 @@ const App: React.FC = () => {
   });
   const [isMusicPlaying, setIsMusicPlaying] = useState<boolean>(false);
   const musicRef = useRef<HTMLAudioElement | null>(null);
+  const prevVolumeRef = useRef<number>(musicVolume || 0.45);
+
+  const [showParentalReport, setShowParentalReport] = useState<boolean>(false);
+  const [showPrizeShop, setShowPrizeShop] = useState<boolean>(false);
 
   const [screenTime, setScreenTime] = useState<ScreenTimeState>({
     limitMinutes: null,
@@ -306,12 +315,48 @@ const App: React.FC = () => {
     gameId: GameId,
     score: number,
     attempts: number,
-    goals?: { montessori: string[]; waldorf: string[]; intelligences: string[] }
+    goals?: { montessori: string[]; waldorf: string[]; intelligences: string[] },
+    metrics?: Record<string, number>
   ) => {
     setGameResults((prev) => [
       ...prev,
-      { gameId, score, attempts, timestamp: Date.now(), goals },
+      { gameId, score, attempts, timestamp: Date.now(), goals, metrics },
     ]);
+
+    // Award simple points and update learning profile
+    const earnedPoints = Math.max(1, Math.round(score / 10));
+    setPlayer((prev) => {
+      const lp = { ...(prev.learningProfile ?? {}) } as Record<string, number>;
+      if (goals && goals.intelligences) {
+        goals.intelligences.forEach((i) => {
+          lp[i] = (lp[i] || 0) + score;
+        });
+      }
+      // also map montessori/waldorf goal strings into the profile so parents see practiced skills
+      if (goals && goals.montessori) {
+        goals.montessori.forEach((g) => {
+          lp[g] = (lp[g] || 0) + score;
+        });
+      }
+      if (goals && goals.waldorf) {
+        goals.waldorf.forEach((g) => {
+          lp[g] = (lp[g] || 0) + score;
+        });
+      }
+
+      // aggregate simple metrics into profile too
+      if (metrics) {
+        Object.entries(metrics).forEach(([k, v]) => {
+          lp[k] = (lp[k] || 0) + v;
+        });
+      }
+
+      return {
+        ...prev,
+        points: (prev.points || 0) + earnedPoints,
+        learningProfile: lp,
+      };
+    });
   };
 
   const canPlay = !isLockedByScreenTime;
@@ -344,6 +389,13 @@ const App: React.FC = () => {
     }
 
     setMusicKey(key);
+    // if the user has a player profile and chose to remember, persist to their profile
+    if (rememberMusic) {
+      setPlayer((p) => ({ ...p, musicKey: key, musicVolume: musicVolume }));
+      try {
+        localStorage.setItem('musicKey', key);
+      } catch (e) {}
+    }
     if (key === "silent") {
       setIsMusicPlaying(false);
       return;
@@ -399,6 +451,13 @@ const App: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // listen for prize shop open events from PlayersOverlay
+  useEffect(() => {
+    const handler = () => setShowPrizeShop(true);
+    window.addEventListener('openPrizeShop', handler as EventListener);
+    return () => window.removeEventListener('openPrizeShop', handler as EventListener);
+  }, []);
+
   // when volume changes, update current audio and persist
   useEffect(() => {
     if (musicRef.current) {
@@ -440,7 +499,11 @@ const App: React.FC = () => {
                     setMusicKey(t.key);
                     setBackgroundMusic(t.key, true);
                     try {
-                      if (rememberMusic) localStorage.setItem('musicKey', t.key);
+                      if (rememberMusic) {
+                        // persist choice to localStorage and per-player profile
+                        localStorage.setItem('musicKey', t.key);
+                        setPlayer((p) => ({ ...p, musicKey: t.key, musicVolume }));
+                      }
                     } catch (e) {}
                   }}
                   aria-pressed={musicKey === t.key}
@@ -464,6 +527,26 @@ const App: React.FC = () => {
                 >
                   {isMusicPlaying ? '⏸️' : '▶️'}
                 </button>
+                <button
+                  type="button"
+                  className="secondary-button volume-icon"
+                  onClick={() => {
+                    // toggle mute/unmute
+                    if (musicVolume > 0) {
+                      prevVolumeRef.current = musicVolume;
+                      setMusicVolume(0);
+                      if (musicRef.current) musicRef.current.volume = 0;
+                    } else {
+                      const restore = prevVolumeRef.current || 0.45;
+                      setMusicVolume(restore);
+                      if (musicRef.current) musicRef.current.volume = restore;
+                    }
+                  }}
+                  aria-label={musicVolume > 0 ? 'Mute' : 'Unmute'}
+                  title={musicVolume > 0 ? 'Mute' : 'Unmute'}
+                >
+                  {musicVolume === 0 ? '🔇' : musicVolume < 0.33 ? '🔈' : musicVolume < 0.66 ? '🔉' : '🔊'}
+                </button>
                 <input
                   type="range"
                   min={0}
@@ -471,6 +554,8 @@ const App: React.FC = () => {
                   value={Math.round(musicVolume * 100)}
                   onChange={(e) => {
                     const v = Number(e.currentTarget.value) / 100;
+                    // remember previous sensible volume when the user mutes
+                    if (v > 0) prevVolumeRef.current = v;
                     setMusicVolume(v);
                     if (musicRef.current) musicRef.current.volume = v;
                     try {
@@ -490,7 +575,10 @@ const App: React.FC = () => {
                     setRememberMusic(v);
                     try {
                       localStorage.setItem('rememberMusic', v ? '1' : '0');
-                      if (!v) {
+                      if (v) {
+                        // persist current music preferences to the player profile
+                        setPlayer((p) => ({ ...p, musicKey, musicVolume }));
+                      } else {
                         localStorage.removeItem('musicKey');
                         localStorage.removeItem('musicVolume');
                       }
@@ -740,7 +828,29 @@ const App: React.FC = () => {
 
       {/* Parent overlay */}
       {showParentOverlay && (
-        <ParentOverlay onClose={() => setShowParentOverlay(false)} />
+        <ParentOverlay
+          onClose={() => setShowParentOverlay(false)}
+          onOpenReport={() => {
+            setShowParentOverlay(false);
+            setShowParentalReport(true);
+          }}
+        />
+      )}
+
+      {showParentalReport && (
+        <ParentalReport player={player} gameResults={gameResults} onClose={() => setShowParentalReport(false)} />
+      )}
+
+      {showPrizeShop && (
+        <PrizeShop
+          player={player}
+          onClose={() => setShowPrizeShop(false)}
+          onRedeem={(cost, prize) => {
+            setPlayer((p) => ({ ...p, points: Math.max(0, (p.points || 0) - cost) }));
+            // simple flow: acknowledge via alert
+            alert(`Redeemed ${prize} for ${cost} points!`);
+          }}
+        />
       )}
 
       {showPlayersOverlay && (
@@ -867,7 +977,8 @@ interface GameViewProps {
     gameId: GameId,
     score: number,
     attempts: number,
-    goals?: { montessori: string[]; waldorf: string[]; intelligences: string[] }
+    goals?: { montessori: string[]; waldorf: string[]; intelligences: string[] },
+    metrics?: Record<string, number>
   ) => void;
   canPlay: boolean;
   onRequestTutorial?: () => void;
@@ -901,6 +1012,11 @@ const GameView: React.FC<GameViewProps> = ({
         <div>
           <h2>{meta.name} <span aria-hidden> {meta.category === 'Memory' ? '🧠' : meta.category === 'Problem Solving' ? '🪄' : '✈️'}</span></h2>
           <p className="game-tagline">{meta.tagline}</p>
+          <div className="skills-list" style={{marginTop:6}}>
+            {meta.skills.map(s => (
+              <span key={s} className="skill-chip">{s}</span>
+            ))}
+          </div>
         </div>
 
         <div className="game-controls">
@@ -959,7 +1075,7 @@ const GameView: React.FC<GameViewProps> = ({
 
           {gameId === "memory" && (
             <MemoryGame
-              onFinish={(score, attempts) =>
+              onFinish={(score, attempts, metrics) =>
                 onGameResult(
                   "memory",
                   score,
@@ -968,14 +1084,15 @@ const GameView: React.FC<GameViewProps> = ({
                     montessori: meta.montessoriGoals ?? [],
                     waldorf: meta.waldorfGoals ?? [],
                     intelligences: meta.intelligences ?? [],
-                  }
+                  },
+                  metrics
                 )
               }
             />
           )}
           {gameId === "digging" && (
             <DiggingGame
-              onFinish={(score, attempts) =>
+              onFinish={(score, attempts, metrics) =>
                 onGameResult(
                   "digging",
                   score,
@@ -984,14 +1101,15 @@ const GameView: React.FC<GameViewProps> = ({
                     montessori: meta.montessoriGoals ?? [],
                     waldorf: meta.waldorfGoals ?? [],
                     intelligences: meta.intelligences ?? [],
-                  }
+                  },
+                  metrics
                 )
               }
             />
           )}
           {gameId === "boots" && (
             <BootsGame
-              onFinish={(score, attempts) =>
+              onFinish={(score, attempts, metrics) =>
                 onGameResult(
                   "boots",
                   score,
@@ -1000,14 +1118,15 @@ const GameView: React.FC<GameViewProps> = ({
                     montessori: meta.montessoriGoals ?? [],
                     waldorf: meta.waldorfGoals ?? [],
                     intelligences: meta.intelligences ?? [],
-                  }
+                  },
+                  metrics
                 )
               }
             />
           )}
           {gameId === "airplanes" && (
             <AirplanesGame
-              onFinish={(score, attempts) =>
+              onFinish={(score, attempts, metrics) =>
                 onGameResult(
                   "airplanes",
                   score,
@@ -1016,7 +1135,8 @@ const GameView: React.FC<GameViewProps> = ({
                     montessori: meta.montessoriGoals ?? [],
                     waldorf: meta.waldorfGoals ?? [],
                     intelligences: meta.intelligences ?? [],
-                  }
+                  },
+                  metrics
                 )
               }
             />
@@ -1029,7 +1149,7 @@ const GameView: React.FC<GameViewProps> = ({
 
 // --- Game 1: Simple Memory Match ---
 interface SimpleGameProps {
-  onFinish: (score: number, attempts: number) => void;
+  onFinish: (score: number, attempts: number, metrics?: Record<string, number>) => void;
 }
 
 const MemoryGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
@@ -1048,6 +1168,8 @@ const MemoryGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
   const [matchedIndexes, setMatchedIndexes] = useState<number[]>([]);
   const [attempts, setAttempts] = useState(0);
   const [finished, setFinished] = useState(false);
+  const firstFlipTimestamp = useRef<number | null>(null);
+  const holdTimes = useRef<number[]>([]);
 
   const handleCardClick = (index: number) => {
     if (finished) return;
@@ -1063,6 +1185,12 @@ const MemoryGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
     if (newFlipped.length === 2) {
       const [a, b] = newFlipped;
       setAttempts((prev) => prev + 1);
+      // measure hold time between the two flips
+      if (firstFlipTimestamp.current) {
+        const dt = (Date.now() - firstFlipTimestamp.current) / 1000;
+        holdTimes.current.push(dt);
+      }
+      firstFlipTimestamp.current = null;
       if (cards[a] === cards[b]) {
         playSound("success");
         setMatchedIndexes((prev) => {
@@ -1071,7 +1199,10 @@ const MemoryGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
             if (next.length === cards.length) {
             setFinished(true);
             const score = 100 - (attempts + 1 - cards.length / 2) * 10;
-            onFinish(Math.max(10, score), attempts + 1);
+            // compute simple concentration metric: longer average hold time signals focused thinking
+            const avgHold = holdTimes.current.length ? (holdTimes.current.reduce((s,n)=>s+n,0)/holdTimes.current.length) : 0;
+            const concentration = Math.min(100, Math.round(avgHold * 20));
+            onFinish(Math.max(10, score), attempts + 1, { concentration, avgHoldTime: Math.round(avgHold*100)/100 });
           }
           return next;
         });
@@ -1080,6 +1211,13 @@ const MemoryGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
         playSound("fail");
         setTimeout(() => setFlippedIndexes([]), 800);
       }
+    }
+  };
+
+  // when the player flips a single card, mark the timestamp
+  const handleCardFlipStart = () => {
+    if (flippedIndexes.length === 0) {
+      firstFlipTimestamp.current = Date.now();
     }
   };
 
@@ -1098,7 +1236,7 @@ const MemoryGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
               key={index}
               type="button"
               className={`memory-card ${isFlipped ? "memory-card-flipped" : ""}`}
-              onClick={() => handleCardClick(index)}
+              onClick={() => { handleCardFlipStart(); handleCardClick(index); }}
               aria-label={isFlipped ? `Card showing ${card}` : "Hidden card"}
             >
               <span aria-hidden="true">{isFlipped ? card : "❓"}</span>
@@ -1135,10 +1273,10 @@ const DiggingGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
       setFound(true);
       const attempts = newDug.length;
       const score = Math.max(10, 100 - (attempts - 1) * 15);
-      onFinish(score, attempts);
+      onFinish(score, attempts, { persistence: attempts });
     } else if (newDug.length === cells.length) {
       playSound("fail");
-      onFinish(10, newDug.length);
+      onFinish(10, newDug.length, { persistence: newDug.length });
     }
   };
 
@@ -1206,7 +1344,7 @@ const BootsGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
       playSound("success");
       setFinished(true);
       const score = Math.max(10, 100 - (attempts) * 20);
-      onFinish(score, attempts + 1);
+      onFinish(score, attempts + 1, { accuracy: score });
     } else {
       playSound("fail");
     }
@@ -1275,7 +1413,7 @@ const AirplanesGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
         playSound("success");
         setFinished(true);
         const score = Math.max(10, 100 - (clicks + 1 - planes.length) * 5);
-        onFinish(score, clicks + 1);
+          onFinish(score, clicks + 1, { reactionScore: score });
       }
       return next;
     });
@@ -1320,7 +1458,12 @@ interface ParentOverlayProps {
   onClose: () => void;
 }
 
-const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose }) => {
+interface ParentOverlayProps {
+  onClose: () => void;
+  onOpenReport?: () => void;
+}
+
+const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport }) => {
   return (
     <div
       className="modal-backdrop"
@@ -1364,14 +1507,22 @@ const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose }) => {
           body, and talking with real people are still the core ingredients of a
           healthy day.
         </p>
-        <button
-          type="button"
-          className="primary-button"
-          onClick={onClose}
-          autoFocus
-        >
-          Got it – let’s play
-        </button>
+        <p style={{fontSize:'0.9rem',color:'var(--text-muted)'}}>This app stores lightweight, local reports and planned features (emotion tracking, AI suggestions, exportable reports) are described in the README; any such features will be opt-in and privacy-first.</p>
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          {onOpenReport && (
+            <button type="button" className="secondary-button" onClick={onOpenReport}>
+              View Parental Report
+            </button>
+          )}
+          <button
+            type="button"
+            className="primary-button"
+            onClick={onClose}
+            autoFocus
+          >
+            Got it – let’s play
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1506,6 +1657,7 @@ const PlayersOverlay: React.FC<PlayersOverlayProps> = ({ player, onClose, onSave
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <div className="modal-content">
         <h2>Player Profile</h2>
+        <p style={{fontSize:'0.95rem'}}>Points: <strong>{local.points ?? 0}</strong></p>
         <label className="form-label">
           Name
           <input
@@ -1535,6 +1687,15 @@ const PlayersOverlay: React.FC<PlayersOverlayProps> = ({ player, onClose, onSave
           </button>
           <button className="secondary-button" onClick={onClose}>
             Cancel
+          </button>
+          <button
+            className="secondary-button"
+            onClick={() => {
+              // open prize shop by emitting a custom event on window; parent App listens
+              window.dispatchEvent(new CustomEvent('openPrizeShop'));
+            }}
+          >
+            Prize Shop
           </button>
         </div>
       </div>
@@ -1566,6 +1727,84 @@ const AboutOverlay: React.FC<AboutOverlayProps> = ({ onClose }) => {
           <button className="primary-button" onClick={onClose}>
             Close
           </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Parental Report ---
+interface ParentalReportProps {
+  player: PlayerProfile;
+  gameResults: GameResult[];
+  onClose: () => void;
+}
+
+const ParentalReport: React.FC<ParentalReportProps> = ({ player, gameResults, onClose }) => {
+  const totals = player.learningProfile || {};
+  const entries = Object.entries(totals).sort((a,b)=> b[1]-a[1]);
+
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal-content">
+        <h2>Parental Report — {player.name || 'Player'}</h2>
+        <p style={{fontSize:'0.95rem'}}>Points: <strong>{player.points ?? 0}</strong></p>
+        <h3>Top practiced skills</h3>
+        <ul>
+          {entries.slice(0,6).map(([k,v]) => (
+            <li key={k}>{k}: {Math.round(v)}</li>
+          ))}
+        </ul>
+        <p style={{fontSize:'0.9rem',color:'var(--text-muted)'}}>
+          This is a local, lightweight summary. For richer exportable reports, emotion tracking, or AI-driven suggestions, see the README (planned features).
+        </p>
+        <div style={{display:'flex',gap:8,marginTop:12}}>
+          <button className="primary-button" onClick={onClose}>Close</button>
+          <button className="secondary-button" onClick={() => {
+            // placeholder: export as JSON
+            const blob = new Blob([JSON.stringify({player, gameResults}, null, 2)], {type:'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `${player.name||'player'}-report.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }}>Export JSON</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Prize Shop ---
+interface PrizeShopProps {
+  player: PlayerProfile;
+  onClose: () => void;
+  onRedeem: (cost: number, prize: string) => void;
+}
+
+const PrizeShop: React.FC<PrizeShopProps> = ({ player, onClose, onRedeem }) => {
+  const prizes = [
+    { id: 'sticker', label: 'Sticker', cost: 5 },
+    { id: 'badge', label: 'Badge', cost: 12 },
+    { id: 'toy', label: 'Small Toy', cost: 25 }
+  ];
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal-content">
+        <h2>Prize Shop</h2>
+        <p>Points: <strong>{player.points ?? 0}</strong></p>
+        <div style={{display:'grid',gap:8}}>
+          {prizes.map(p => (
+            <div key={p.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div>{p.label} — {p.cost} pts</div>
+              <div>
+                <button className="primary-button" disabled={(player.points||0) < p.cost} onClick={() => onRedeem(p.cost, p.label)}>Redeem</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:'flex',gap:8,marginTop:12}}>
+          <button className="secondary-button" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>

@@ -14,6 +14,23 @@ Each game appears in an animated carousel with:
 
 - A **catchy title**
 - A one-line **description**
+````markdown
+# Tripp's Tricky Tetraverse: an All Four You Kids’ Arcade
+
+In honour of Tripp's Fourth Birthday, I nixed a boring old card and took a stab at developing a kid-friendly arcade of web games with gentle screen-time tools, a parent info overlay, and simple skill snapshots based on how kids play.
+
+---
+
+## 🎮 What’s Inside?
+
+This app is designed for young kids (roughly 3–10) to tap around and have fun while parents stay in control of time and context.
+
+### Games (The “Arcade”)
+
+Each game appears in an animated carousel with:
+
+- A **catchy title**
+- A one-line **description**
 - The key **skills it builds**
 - Difficulty label and skill **category**
 
@@ -190,7 +207,7 @@ Built with ❤️ in Boston by [@ashleyer](https://github.com/ashleyer).
 
 ## Music attributions
 
-Background music tracks used (place matching `.mp3` files in `public/music/`):
+Background music tracks used (place matching `.mp3` files in `public/sounds/`):
 
 - **Tides & Smiles** — Moavii
   - Source: https://freetouse.com/music
@@ -213,3 +230,26 @@ Background music tracks used (place matching `.mp3` files in `public/music/`):
   - Attribution: Music track: Love in Japan by Milky Wayvers — Free To Use Music for Video
 
 When publishing, ensure licensing and attribution requirements from each source are followed.
+
+````
+
+## 🚀 Planned & Future Features (notes for parents & contributors)
+
+- **Emotion tracking (future):** We plan to explore an optional, local (on-device) emotion-tracking pipeline that can detect stress or frustration signals while a child plays. Any such feature will be opt-in, privacy-first, and described in detail before use.
+
+- **AI-driven suggestions (future):** Based on observed patterns (e.g., repeated difficulty with a particular skill), the app will be able to suggest real-world activities parents can do with their child to support growth in that area.
+
+- **Exportable reports & infographics (future):** Parents will be able to export time-filtered reports (weekly/monthly), including simple infographics, accomplishments, and suggested next steps for play-based learning.
+
+- **Points & Prize Shop:** A built-in point economy will let kids earn points from games and either save them or cash them in via a simulated prize shop. This is a playful mechanism to bridge in-app success with real-life rewards.
+
+- **Per-player learning profiles:** The app tracks which pedagogical goals and multiple-intelligences are practiced during play. These are stored locally and shown in a lightweight parental report; no data is sent anywhere by default.
+
+If you want help implementing any of the above or running experiments with anonymized, opt-in telemetry for research, open an issue or reach out.
+
+Contact & Contributing
+
+- **GitHub:** [https://github.com/ashleyer](https://github.com/ashleyer)
+- **Email:** [ashleye.romano@gmail.com](mailto:ashleye.romano@gmail.com)
+
+If you'd like direct help, open an issue on the repo above or send a short note to the email address.
