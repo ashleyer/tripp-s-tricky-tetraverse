@@ -147,6 +147,7 @@ const App: React.FC = () => {
   const [showAboutOverlay, setShowAboutOverlay] = useState<boolean>(false);
   const [showIntro, setShowIntro] = useState<boolean>(true);
   const [showTour, setShowTour] = useState<boolean>(false);
+  const [pendingTour, setPendingTour] = useState<boolean>(false);
   const [showTutorial, setShowTutorial] = useState<{
     gameId: GameId | null;
     visible: boolean;
@@ -659,7 +660,8 @@ const App: React.FC = () => {
         <IntroBanner
           onBegin={() => {
             setShowIntro(false);
-            setShowTour(true);
+            setPendingTour(true);
+            setShowParentOverlay(true);
           }}
         />
       )}
@@ -708,7 +710,14 @@ const App: React.FC = () => {
       {/* Parent overlay */}
       {showParentOverlay && (
         <ParentOverlay
-          onClose={() => setShowParentOverlay(false)}
+          onClose={() => {
+            setShowParentOverlay(false);
+            if (pendingTour) {
+              setPendingTour(false);
+              setShowTour(true);
+            }
+          }}
+          isDisclaimer={pendingTour}
           onOpenReport={() => {
             setShowParentOverlay(false);
             setShowParentalReport(true);
@@ -1091,9 +1100,10 @@ interface ParentOverlayProps {
   onOpenReport?: () => void;
   screenTime: ScreenTimeState;
   onSetScreenTime: (minutes: number) => void;
+  isDisclaimer?: boolean;
 }
 
-const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport, screenTime, onSetScreenTime }) => {
+const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport, screenTime, onSetScreenTime, isDisclaimer }) => {
   const [showDetails, setShowDetails] = useState<boolean>(false);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -1150,7 +1160,7 @@ const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport, sc
             autoFocus
             style={{ marginLeft: 'auto' }}
           >
-            Close
+            {isDisclaimer ? "Got it – Let's Play" : "Close"}
           </button>
         </div>
 
@@ -1178,7 +1188,7 @@ interface IntroBannerProps {
 const IntroBanner: React.FC<IntroBannerProps> = ({ onBegin }) => {
   const slides = [
     { emoji: '🚜', title: 'Truck Match' },
-    { emoji: '💎', title: 'Treasure Dig' },
+    { emoji: '🏴‍☠️', title: "Long Shorty's Loot" },
     { emoji: '👢', title: 'Isabelle\'s Boots' },
     { emoji: '✈️', title: 'Airplane Catch' },
   ];
@@ -1425,7 +1435,7 @@ const AboutOverlay: React.FC<AboutOverlayProps> = ({ onClose }) => {
       <div className="modal-content">
         <h2>About Tripp's Tricky Tetraverse</h2>
         <p>
-          This small arcade was made to celebrate a four-year-old's birthday —
+          In honour of my nephew Tripp's fourth Birthday, I ditched a birthday card he cant even read and took a stab at building this arcade instead —
           short, gentle games that focus on matching, digging, picking, and
           catching. It's made to be safe, ad-free, and local to this device.
         </p>

@@ -25,10 +25,10 @@ Current games:
    - Skills: Memory, focus, pattern spotting
    - Category: Memory
 
-2. **Treasure Dig (Digging Game)**  
-   Tap squares in a little grid to “dig” and find a hidden treasure.
+2. **Looking for Long Shorty's Loot (Digging Game)**  
+   Tap squares in a little grid to “dig” and find the pirate treasure.
 
-   - Skills: Patience, basic strategy
+   - Skills: Patience, guessing, pirate luck
    - Category: Problem Solving
 
 3. **Isabelle’s Boots**  

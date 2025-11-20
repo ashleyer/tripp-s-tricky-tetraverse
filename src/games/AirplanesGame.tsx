@@ -9,6 +9,7 @@ interface SimpleGameProps {
 
 type PlaneState = {
   id: number;
+  emoji: string;
   caught: boolean;
   top: number; // percent
   duration: number; // seconds
@@ -16,24 +17,27 @@ type PlaneState = {
 };
 
 const AirplanesGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
-  const TOTAL_PLANES = 6;
-  const makePlanes = (): PlaneState[] =>
-    Array.from({ length: TOTAL_PLANES }, (_, i) => ({
+  const TOTAL_OBJECTS = 10;
+  const OBJECT_TYPES = ["✈️", "🚁", "🚀", "🛸", "🦅", "🎈", "🦸", "🐦", "🪁", "🐝"];
+  
+  const makeObjects = (): PlaneState[] =>
+    Array.from({ length: TOTAL_OBJECTS }, (_, i) => ({
       id: i,
+      emoji: OBJECT_TYPES[Math.floor(Math.random() * OBJECT_TYPES.length)],
       caught: false,
-      top: Math.round(6 + Math.random() * 72),
-      duration: Math.round(6 + Math.random() * 10),
-      delay: Math.round(Math.random() * 300) / 100, // up to 3s
+      top: Math.floor(Math.random() * 80) + 5, // 5% to 85%
+      duration: 5 + Math.random() * 7, // 5-12s
+      delay: Math.random() * 6, // 0-6s stagger
     }));
 
-  const [planes, setPlanes] = useState<PlaneState[]>([]);
+  const [objects, setObjects] = useState<PlaneState[]>([]);
   const [caughtCount, setCaughtCount] = useState(0);
   const [clicks, setClicks] = useState(0);
   const [finished, setFinished] = useState(false);
   const areaRef = useRef<HTMLDivElement | null>(null);
 
   const startNewGame = () => {
-    setPlanes(makePlanes());
+    setObjects(makeObjects());
     setCaughtCount(0);
     setClicks(0);
     setFinished(false);
@@ -44,25 +48,30 @@ const AirplanesGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
     startNewGame();
   }, []);
 
-  const handlePlaneClick = (id: number) => {
+  const handleObjectClick = (id: number) => {
     if (finished) return;
+    
+    // Find the object to check if it's already caught
+    const obj = objects.find(o => o.id === id);
+    if (!obj || obj.caught) return;
+
     playSound('click');
     setClicks((prev) => prev + 1);
-    setPlanes((prev) =>
+    setObjects((prev) =>
       prev.map((p) => (p.id === id ? { ...p, caught: true } : p))
     );
     setCaughtCount((prev) => {
       const next = prev + 1;
       // announce progress for screen readers
-      try { window.dispatchEvent(new CustomEvent('ttt-announce', { detail: `Caught ${next} of ${TOTAL_PLANES} planes` })); } catch (e) {}
-      if (next === TOTAL_PLANES) {
+      try { window.dispatchEvent(new CustomEvent('ttt-announce', { detail: `Caught ${next} of ${TOTAL_OBJECTS} objects` })); } catch (e) {}
+      if (next === TOTAL_OBJECTS) {
         playSound('success');
         setFinished(true);
-        const score = Math.max(10, 100 - (clicks + 1 - TOTAL_PLANES) * 5);
+        const score = Math.max(10, 100 - (clicks + 1 - TOTAL_OBJECTS) * 5);
         onFinish(score, clicks + 1, { reactionScore: score });
         // celebratory confetti in the play area
         try { createConfetti(areaRef.current, 28); } catch (e) {}
-        try { window.dispatchEvent(new CustomEvent('ttt-announce', { detail: `All planes caught! Great reflexes!` })); } catch (e) {}
+        try { window.dispatchEvent(new CustomEvent('ttt-announce', { detail: `All flying objects caught! Great reflexes!` })); } catch (e) {}
       }
       return next;
     });
@@ -71,39 +80,40 @@ const AirplanesGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
   return (
     <div className="game-panel">
       <p className="game-instructions">
-        Tap the airplanes as they “zoom” by. Catch them all!
+        Tap the flying things as they zoom across the sky! Catch them all!
       </p>
       <div
         ref={areaRef}
         className="planes-area"
-        aria-label="Airplanes to tap"
+        aria-label="Sky with flying objects"
         aria-live="polite"
       >
-        {planes.map((plane) => (
+        {objects.map((obj) => (
           <button
-            key={plane.id}
+            key={obj.id}
             type="button"
-            className={`plane ${plane.caught ? "plane-caught" : "fly"}`}
-            onClick={() => handlePlaneClick(plane.id)}
-            aria-label={plane.caught ? "Plane already caught" : "Catch plane"}
+            className={`flying-object ${obj.caught ? "flying-object-caught" : ""}`}
+            onClick={() => handleObjectClick(obj.id)}
+            aria-label={obj.caught ? "Caught!" : `Catch ${obj.emoji}`}
             style={{
-              top: `${plane.top}%`,
-              animationDuration: `${plane.duration}s`,
-              animationDelay: `${plane.delay}s`,
-              animationPlayState: plane.caught ? 'paused' : 'running',
+              top: `${obj.top}%`,
+              animationDuration: `${obj.duration}s`,
+              animationDelay: `${obj.delay}s`,
+              // If caught, we let the CSS class handle the transition/hiding
             }}
+            disabled={obj.caught}
           >
-            <span aria-hidden="true">✈️</span>
+            <span aria-hidden="true">{obj.emoji}</span>
           </button>
         ))}
       </div>
       <p className="game-meta-small">
-        Caught: {caughtCount} / {TOTAL_PLANES}
+        Caught: {caughtCount} / {TOTAL_OBJECTS}
       </p>
       {finished && (
         <div className="game-success-message" style={{ textAlign: 'center', marginTop: '1rem' }}>
           <p style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
-            All planes landed safely. Great reflexes!
+            The sky is clear! You're a super catcher!
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
             <button 
