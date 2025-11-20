@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { _BASE, playSound } from './utils/sound';
+import { _BASE, playSound, playAlternateClick } from './utils/sound';
 import useAnnouncer from './hooks/useAnnouncer';
 import { FooterBrand } from './components/UI';
+import { GlobalEffects } from './components/GlobalEffects';
 import MemoryGame from './games/MemoryGame';
 import DiggingGame from './games/DiggingGame';
 import BootsGame from './games/BootsGame';
@@ -58,6 +59,7 @@ const GAME_METADATA: Record<
     skills: string[];
     difficulty: "Easy" | "Medium";
     category: "Memory" | "Problem Solving" | "Attention & Coordination";
+    emoji: string;
     montessoriGoals?: string[];
     waldorfGoals?: string[];
     intelligences?: string[];
@@ -69,6 +71,7 @@ const GAME_METADATA: Record<
     skills: ["Memory", "Focus", "Pattern spotting"],
     difficulty: "Medium",
     category: "Memory",
+    emoji: "🃏",
     montessoriGoals: ["Concentration", "Order", "Refined visual discrimination"],
     waldorfGoals: ["Imagination with visual motifs", "Rhythmic practice"],
     intelligences: ["Visual-Spatial", "Logical-Mathematical"],
@@ -79,6 +82,7 @@ const GAME_METADATA: Record<
     skills: ["Patience", "Guessing", "Basic strategy"],
     difficulty: "Easy",
     category: "Problem Solving",
+    emoji: "💎",
     montessoriGoals: ["Sensorial exploration", "Cause & effect"],
     waldorfGoals: ["Nature play", "Story-based discovery"],
     intelligences: ["Bodily-Kinesthetic", "Naturalist"],
@@ -89,6 +93,7 @@ const GAME_METADATA: Record<
     skills: ["Color matching", "Attention to detail"],
     difficulty: "Easy",
     category: "Attention & Coordination",
+    emoji: "👢",
     montessoriGoals: ["Color discrimination", "Practical life matching"],
     waldorfGoals: ["Artful color play", "Rhythmic repetition"],
     intelligences: ["Visual-Spatial", "Interpersonal"],
@@ -99,6 +104,7 @@ const GAME_METADATA: Record<
     skills: ["Hand-eye coordination", "Reaction time"],
     difficulty: "Easy",
     category: "Attention & Coordination",
+    emoji: "✈️",
     montessoriGoals: ["Gross motor timing", "Hand-eye coordination"],
     waldorfGoals: ["Imaginative movement", "Narrative play"],
     intelligences: ["Bodily-Kinesthetic", "Spatial"],
@@ -141,6 +147,7 @@ const App: React.FC = () => {
   const [showPlayersOverlay, setShowPlayersOverlay] = useState<boolean>(false);
   const [showAboutOverlay, setShowAboutOverlay] = useState<boolean>(false);
   const [showIntro, setShowIntro] = useState<boolean>(true);
+  const [showTour, setShowTour] = useState<boolean>(false);
   const [showTutorial, setShowTutorial] = useState<{
     gameId: GameId | null;
     visible: boolean;
@@ -175,11 +182,15 @@ const App: React.FC = () => {
 
   const [showParentalReport, setShowParentalReport] = useState<boolean>(false);
   const [showPrizeShop, setShowPrizeShop] = useState<boolean>(false);
+  const [showSkillsOverlay, setShowSkillsOverlay] = useState<boolean>(false);
   const [redeemConfirm, setRedeemConfirm] = useState<{
     open: boolean;
     prize?: string;
     cost?: number;
   }>({ open: false });
+
+  const [tempName, setTempName] = useState("");
+  const [tempAge, setTempAge] = useState("");
 
   // ARIA announcer: use shared hook that listens for `ttt-announce` events
   const { announceText } = useAnnouncer();
@@ -367,10 +378,24 @@ const App: React.FC = () => {
 
   const showArcade = !selectedGame;
 
+  // Calculate best score for the active game
+  const bestScore = useMemo(() => {
+    if (!selectedGame) return 0;
+    // Check session results
+    const sessionBest = gameResults
+      .filter((r) => r.gameId === selectedGame)
+      .reduce((max, r) => Math.max(max, r.score), 0);
+    // Check persisted profile results
+    const profileBest = (player.gameResults || [])
+      .filter((r) => r.gameId === selectedGame)
+      .reduce((max, r) => Math.max(max, r.score), 0);
+    return Math.max(sessionBest, profileBest);
+  }, [selectedGame, gameResults, player.gameResults]);
+
   // Handle selecting a game: show tutorial first time, otherwise enter game
   const handleSelectGame = (gameId: GameId) => {
     if (!canPlay) return;
-    playSound("click");
+    playAlternateClick();
     const key = `seenTutorial:${gameId}`;
     if (!localStorage.getItem(key)) {
       setShowTutorial({ gameId, visible: true });
@@ -485,6 +510,7 @@ const App: React.FC = () => {
 
   return (
     <div className={`app-root ${selectedGame ? "in-game" : ""}`}>
+      <GlobalEffects />
 
       <header className="app-header" aria-label="Tripp's Tricky Tetraverse">
         <div className="header-main">
@@ -492,69 +518,155 @@ const App: React.FC = () => {
             <h1 className="app-title design-title" aria-label="Tripp's Tricky Tetraverse">
               Tripp's Tricky Tetraverse
             </h1>
-            <p className="app-subtitle design-subtitle">an all for you arcade</p>
+            <p className="app-subtitle design-subtitle" style={{ fontFamily: '"Rubik Bubbles", cursive', letterSpacing: '0.05em' }}>an All Four You arcade</p>
           </div>
         </div>
       </header>
 
-      {/* NEW TOP CONTROL BAR */}
-      <div className="top-control-bar">
-        <button 
-          className="player-widget" 
-          onClick={() => setShowPlayersOverlay(true)}
-          aria-label="Player settings"
-        >
-          <span className="player-avatar-icon">
-            {player.avatarUrl && player.avatarUrl.startsWith('preloaded:') 
-              ? PRELOADED_AVATARS.find(a => `preloaded:${a.id}` === player.avatarUrl)?.emoji 
-              : (player.avatarUrl ? '📷' : '🙂')}
-          </span>
-          <span className="player-name-label">{player.name || "Player"}</span>
-        </button>
+      {/* Main Navigation Bar */}
+      <nav className="main-overlay-nav" id="tour-nav">
+        <ul className="overlay-list">
+          <li>
+            <button className="overlay-nav-btn interactive-hover" onClick={() => setShowPlayersOverlay(true)}>
+              Players {player.avatarUrl ? '🙂' : ''}
+            </button>
+          </li>
+          <li>
+            <button className="overlay-nav-btn interactive-hover" onClick={() => setShowPrizeShop(true)}>
+              Prize Shop 🏆
+            </button>
+          </li>
+          <li>
+            <button className="overlay-nav-btn interactive-hover" onClick={() => setShowSkillsOverlay(true)}>
+              Skills Built 📊
+            </button>
+          </li>
+          <li>
+            <button className="overlay-nav-btn interactive-hover" onClick={() => setShowParentOverlay(true)}>
+              Parents 🛡️
+            </button>
+          </li>
+          <li>
+            <button className="overlay-nav-btn interactive-hover" onClick={() => setShowAboutOverlay(true)}>
+              About ℹ️
+            </button>
+          </li>
+        </ul>
+      </nav>
 
-        <button 
-          className="prize-widget-btn" 
-          onClick={() => setShowPrizeShop(true)}
-          aria-label="Prize Shop"
-        >
-          <span className="prize-icon">🏆</span>
-          <span className="prize-label">Prizes</span>
-        </button>
+      {/* Player Profile & Points Section */}
+      <section className="profile-section" id="tour-profile" aria-label="Current Player">
+        {!player.name ? (
+          <div className="profile-setup" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '10px' }}>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)' }}>Who is playing?</h3>
+            <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '320px' }}>
+              <input 
+                type="text" 
+                placeholder="Name" 
+                value={tempName}
+                onChange={(e) => setTempName(e.target.value)}
+                style={{ flex: 1, padding: '8px', borderRadius: '12px', border: '1px solid #ccc' }}
+              />
+              <input 
+                type="number" 
+                placeholder="Age" 
+                value={tempAge}
+                onChange={(e) => setTempAge(e.target.value)}
+                style={{ width: '70px', padding: '8px', borderRadius: '12px', border: '1px solid #ccc' }}
+              />
+            </div>
+            <button 
+              className="primary-button" 
+              disabled={!tempName}
+              onClick={() => {
+                setPlayer(p => ({ ...p, name: tempName, age: tempAge ? parseInt(tempAge) : null }));
+                playSound('success');
+              }}
+              style={{ width: '100%', maxWidth: '320px', justifyContent: 'center' }}
+            >
+              Let's Play!
+            </button>
+          </div>
+        ) : (
+          <div 
+            className="profile-card interactive-hover" 
+            onClick={() => setShowPlayersOverlay(true)}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className="avatar-preview-box" style={{ width: 56, height: 56, borderRadius: '50%', border: '3px solid var(--color-accent)', background: '#fff' }}>
+                {player.avatarUrl ? (
+                  player.avatarUrl.startsWith("preloaded:") ? (
+                    <span style={{ fontSize: '2rem' }}>
+                      {PRELOADED_AVATARS.find((a) => `preloaded:${a.id}` === player.avatarUrl)?.emoji}
+                    </span>
+                  ) : (
+                    <img src={player.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                  )
+                ) : (
+                  <span style={{ fontSize: '2rem' }}>🙂</span>
+                )}
+              </div>
+              <div>
+                <h2 style={{ fontSize: '1.3rem', margin: 0, fontFamily: 'var(--font-display)' }}>{player.name}</h2>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                  {player.age ? `${player.age} years old` : 'Ready to play!'}
+                </p>
+              </div>
+            </div>
+            
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--color-accent)', fontFamily: 'var(--font-display)' }}>
+                {player.points || 0} <span style={{ fontSize: '1rem', color: 'var(--text-main)' }}>pts</span>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '140px', lineHeight: 1.2 }}>
+                Save up for the <strong>Prize Shop</strong>!
+              </p>
+            </div>
+          </div>
+        )}
+      </section>
 
-        {/* Compact Music Bar */}
-        <div className="compact-music-bar">
-          <button className="music-toggle-btn" onClick={toggleMusicPlay}>
+      {/* Music Choice Section */}
+      <section className="music-choice-section" aria-label="Music Selection">
+        <h3 style={{ fontSize: '1.4rem', margin: '0 0 0.5rem 0' }}>🎵 Music Choice 🎵</h3>
+        <p style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)' }}>
+          Tap a button to change the music!
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
+          <button 
+            className="music-tile interactive-hover" 
+            onClick={toggleMusicPlay} 
+            style={{ minWidth: '60px', background: isMusicPlaying ? 'var(--accent-soft)' : '#eee' }}
+          >
             {isMusicPlaying ? '⏸' : '▶️'}
           </button>
-          <div className="music-track-selector">
-             {MUSIC_TRACKS.map(t => (
-               <button 
-                 key={t.key}
-                 className={`mini-music-dot ${musicKey === t.key ? 'active' : ''}`}
-                 onClick={() => setBackgroundMusic(t.key, true)}
-                 title={t.label}
-               >
-                 {t.emoji}
-               </button>
-             ))}
-          </div>
+          {MUSIC_TRACKS.map(t => (
+            <button 
+              key={t.key}
+              className={`music-tile interactive-hover ${musicKey === t.key ? 'music-tile-selected' : ''}`}
+              onClick={() => setBackgroundMusic(t.key, true)}
+            >
+              <span style={{ fontSize: '1.4rem' }}>{t.emoji}</span>
+              <span>{t.label}</span>
+            </button>
+          ))}
         </div>
+      </section>
 
-        <button 
-          className="parent-widget-btn" 
-          onClick={() => setShowParentOverlay(true)}
-          aria-label="Parent settings"
-        >
-          🛡️
-        </button>
-      </div>
+
 
       {showIntro && (
         <IntroBanner
           onBegin={() => {
             setShowIntro(false);
+            setShowTour(true);
           }}
         />
+      )}
+
+      {showTour && (
+        <TourOverlay onClose={() => setShowTour(false)} />
       )}
 
       {/* ARIA live region for dynamic announcements */}
@@ -572,6 +684,8 @@ const App: React.FC = () => {
           onRequestTutorial={() =>
             setShowTutorial({ gameId: selectedGame, visible: true })
           }
+          currentPoints={player.points || 0}
+          bestScore={bestScore}
         />
       ) : null}
 
@@ -664,6 +778,14 @@ const App: React.FC = () => {
         <AboutOverlay onClose={() => setShowAboutOverlay(false)} />
       )}
 
+      {showSkillsOverlay && (
+        <SkillsOverlay 
+          player={player} 
+          onClose={() => setShowSkillsOverlay(false)} 
+          performanceSummary={performanceSummary}
+        />
+      )}
+
       {/* Only show footer on main (arcade) page */}
       {showArcade && (
         <footer className="app-footer">
@@ -699,33 +821,33 @@ const ArcadeView: React.FC<ArcadeViewProps> = ({ canPlay, onSelectGame }) => {
   const currentGame = GAME_METADATA[currentGameId];
 
   const next = () => {
-    playSound("click");
+    playAlternateClick();
     setIndex((prev) => (prev + 1) % gameIds.length);
   };
 
   const prev = () => {
-    playSound("click");
+    playAlternateClick();
     setIndex((prev) => (prev - 1 + gameIds.length) % gameIds.length);
   };
 
   return (
     <section
       className="arcade-section"
+      id="tour-arcade"
       aria-label="Game selection carousel"
       aria-live="polite"
     >
       <div className="arcade-heading-block">
         <h2 className="arcade-title design-title">Pick a Game from the Arcade</h2>
         <p className="arcade-blurb">
-          Swipe through the games, read what skills they build, and press play to
-          start.
+          Pick from 4 tricky games! Play to learn new skills and earn points.
         </p>
       </div>
 
       <div className="carousel-wrapper">
         <button
           type="button"
-          className="carousel-nav parent-button overlay-nav-btn"
+          className="carousel-nav parent-button overlay-nav-btn interactive-hover"
           onClick={prev}
           aria-label="Previous game"
         >
@@ -736,6 +858,9 @@ const ArcadeView: React.FC<ArcadeViewProps> = ({ canPlay, onSelectGame }) => {
           <p className="game-pill">
             #{index + 1} of {gameIds.length}
           </p>
+          <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }} aria-hidden="true">
+            {currentGame.emoji}
+          </div>
           <h3>{currentGame.name}</h3>
           <p className="game-tagline">{currentGame.tagline}</p>
           <p className="game-meta">
@@ -749,20 +874,22 @@ const ArcadeView: React.FC<ArcadeViewProps> = ({ canPlay, onSelectGame }) => {
               </span>
             ))}
           </div>
-          <button
-            type="button"
-            className="primary-button game-play-button"
-            onClick={() => onSelectGame(currentGameId)}
-            disabled={!canPlay}
-            aria-disabled={!canPlay}
-          >
-            {canPlay ? "Play this game" : "Screen time is up"}
-          </button>
+          <div style={{ marginTop: 'auto', width: '100%', display: 'flex', justifyContent: 'center', paddingTop: '1rem' }}>
+            <button
+              type="button"
+              className="primary-button game-play-button interactive-hover"
+              onClick={() => onSelectGame(currentGameId)}
+              disabled={!canPlay}
+              aria-disabled={!canPlay}
+            >
+              {canPlay ? "Play this game" : "Screen time is up"}
+            </button>
+          </div>
         </article>
 
         <button
           type="button"
-          className="carousel-nav parent-button overlay-nav-btn"
+          className="carousel-nav parent-button overlay-nav-btn interactive-hover"
           onClick={next}
           aria-label="Next game"
         >
@@ -785,6 +912,8 @@ interface GameViewProps {
   ) => void;
   canPlay: boolean;
   onRequestTutorial?: () => void;
+  currentPoints: number;
+  bestScore: number;
 }
 
 const GameView: React.FC<GameViewProps> = ({
@@ -793,17 +922,19 @@ const GameView: React.FC<GameViewProps> = ({
   onGameResult,
   canPlay,
   onRequestTutorial,
+  currentPoints,
+  bestScore,
 }) => {
   const meta = GAME_METADATA[gameId];
   const [paused, setPaused] = useState(false);
 
   return (
-    <section className="game-section" aria-label={meta.name}>
+    <section className="game-section game-enter-active" aria-label={meta.name}>
       <div className="game-header">
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button
             type="button"
-            className="game-control-btn"
+            className="game-control-btn interactive-hover"
             onClick={onBackToArcade}
             aria-label="Back to arcade"
             title="Back"
@@ -812,20 +943,18 @@ const GameView: React.FC<GameViewProps> = ({
           </button>
         </div>
 
-        <div>
-          <h2>{meta.name} <span aria-hidden> {meta.category === 'Memory' ? '🧠' : meta.category === 'Problem Solving' ? '🪄' : '✈️'}</span></h2>
-          <p className="game-tagline">{meta.tagline}</p>
-          <div className="skills-list" style={{marginTop:6}}>
-            {meta.skills.map(s => (
-              <span key={s} className="skill-chip">{s}</span>
-            ))}
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <h2>{meta.name} <span aria-hidden>{meta.emoji}</span></h2>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+            <span>Points: <strong>{currentPoints}</strong></span>
+            <span>Best: <strong>{bestScore}</strong></span>
           </div>
         </div>
 
         <div className="game-controls">
           <button
             type="button"
-            className="game-control-btn"
+            className="game-control-btn interactive-hover"
             onClick={() => setPaused((p) => !p)}
             aria-pressed={paused}
             aria-label={paused ? 'Resume game' : 'Pause game'}
@@ -836,7 +965,7 @@ const GameView: React.FC<GameViewProps> = ({
 
           <button
             type="button"
-            className="game-control-btn"
+            className="game-control-btn interactive-hover"
             onClick={() => onRequestTutorial && onRequestTutorial()}
             aria-label="Show directions"
             title="Directions"
@@ -846,7 +975,7 @@ const GameView: React.FC<GameViewProps> = ({
 
           <button
             type="button"
-            className="game-control-btn"
+            className="game-control-btn interactive-hover"
             onClick={onBackToArcade}
             aria-label="Quit to main carousel"
             title="Quit"
@@ -1070,15 +1199,14 @@ const IntroBanner: React.FC<IntroBannerProps> = ({ onBegin }) => {
             </div>
           ))}
         </div>
-        <h1 style={{ fontSize: '1.6rem', margin: '0.8rem 0 0.2rem' }}>🎉 Tripp's Tricky Tetraverse</h1>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '0.8rem' }}>Tiny games, big smiles.</p>
+        <h1 style={{ fontSize: '1.6rem', margin: '0.8rem 0 0.2rem' }}>Tripp's Tricky Tetraverse</h1>
+        
         <div style={{ margin: '0.6rem 0' }}>
           <button className="primary-button" onClick={onBegin} style={{ fontSize: '1rem' }}>
             Tap to Begin
           </button>
         </div>
-        {/* <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Parents: Tap <strong>For Parents</strong></p> */}
-        <FooterBrand />
+        <h2 style={{ fontFamily: '"Bubblegum Sans", cursive', color: 'var(--color-accent)', marginTop: '1rem' }}>Happy Fourth Birthday, Tripp!</h2>
       </div>
     </div>
   );
@@ -1387,7 +1515,7 @@ const ParentalReport: React.FC<ParentalReportProps> = ({ player, gameResults, on
     const node = document.getElementById(id) as SVGSVGElement | null;
     if (!node) return;
     const svgData = new XMLSerializer().serializeToString(node);
-    const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+    const svgBlob = new Blob([svgData], {type: 'image/svg+xml'});
     const url = URL.createObjectURL(svgBlob);
     const img = new Image();
     img.onload = () => {
@@ -1483,37 +1611,193 @@ const PrizeShop: React.FC<PrizeShopProps> = ({ player, onClose, onRedeem }) => {
     { id: 'chess', label: '♟️ Chess Set', cost: 50 },
     { id: 'tshirt', label: '👕 Tetraverse T-shirt', cost: 75 },
   ];
+
+  useEffect(() => {
+    playSound('success');
+  }, []);
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal-content">
-        <h2>Prize Shop</h2>
-        <p>Points: <strong>{player.points ?? 0}</strong></p>
-        <div style={{display:'grid',gap:8}}>
-          {prizes.map(p => (
-            <div key={p.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <div>{p.label} — {p.cost} pts</div>
-              <div>
-                <button className="primary-button" disabled={(player.points||0) < p.cost} onClick={() => onRedeem(p.cost, p.label)}>Redeem</button>
-              </div>
-            </div>
-          ))}
+      <div className="modal-content prize-shop-content">
+        <div className="confetti-burst" aria-hidden="true"></div>
+        <h2 className="design-title" style={{textAlign:'center', fontSize:'2.2rem', color:'#ff6b6b'}}>🏆 Prize Shop 🏆</h2>
+        <p style={{textAlign:'center', fontSize:'1.2rem'}}>
+          You have <strong style={{color:'#4cc9f0', fontSize:'1.4rem'}}>{player.points ?? 0}</strong> points!
+        </p>
+        <p style={{textAlign:'center', fontSize:'0.95rem', color:'var(--text-muted)', margin:'-8px 0 12px 0'}}>
+          Tap a prize to buy it!
+        </p>
+        
+        <div className="prize-grid-container" style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:'12px', maxHeight:'40vh', overflowY:'auto', padding:'8px'}}>
+          {prizes.map(p => {
+            const canAfford = (player.points || 0) >= p.cost;
+            return (
+              <button 
+                key={p.id} 
+                className={`prize-card interactive-hover ${canAfford ? 'affordable' : 'locked'}`}
+                onClick={() => canAfford && onRedeem(p.cost, p.label)}
+                disabled={!canAfford}
+                style={{
+                  display:'flex', flexDirection:'column', alignItems:'center', padding:'12px',
+                  border: canAfford ? '2px solid #4cc9f0' : '2px solid #eee',
+                  borderRadius:'16px', background: canAfford ? '#fff' : '#f9f9f9',
+                  opacity: canAfford ? 1 : 0.6, cursor: canAfford ? 'pointer' : 'not-allowed'
+                }}
+              >
+                <div style={{fontSize:'2.5rem', marginBottom:'4px'}}>{p.label.split(' ')[0]}</div>
+                <div style={{fontSize:'0.9rem', fontWeight:'bold', textAlign:'center'}}>{p.label.split(' ').slice(1).join(' ')}</div>
+                <div style={{fontSize:'0.85rem', color: canAfford ? '#0b3d91' : '#999', marginTop:'4px'}}>
+                  {p.cost} pts
+                </div>
+              </button>
+            );
+          })}
         </div>
-        <div style={{display:'flex',gap:8,marginTop:12}}>
-          <button className="secondary-button" onClick={onClose}>Close</button>
-        </div>
-        <div style={{marginTop:12}}>
-          <strong>Inventory</strong>
-          <div style={{marginTop:6}}>
+
+        <div style={{marginTop:16, borderTop:'2px dashed #eee', paddingTop:12}}>
+          <h3 style={{fontSize:'1.1rem', margin:'0 0 8px 0'}}>🎒 Your Inventory</h3>
+          <div style={{display:'flex', flexWrap:'wrap', gap:'8px', minHeight:'60px'}}>
             {(player.inventory && player.inventory.length) ? (
-              <ul>
-                {player.inventory.map((it, i) => <li key={i}>{it}</li>)}
-              </ul>
+              player.inventory.map((it, i) => (
+                <span key={i} className="inventory-item" style={{background:'#fffbe8', padding:'4px 10px', borderRadius:'20px', border:'1px solid #ffd700', fontSize:'0.9rem'}}>
+                  {it}
+                </span>
+              ))
             ) : (
-              <div style={{color:'var(--text-muted)'}}>No redeemed items yet.</div>
+              <div style={{color:'var(--text-muted)', fontSize:'0.9rem', fontStyle:'italic'}}>Your backpack is empty. Play games to earn points!</div>
             )}
           </div>
         </div>
+
+        <div style={{display:'flex', gap:8, marginTop:20, justifyContent:'center'}}>
+          <button className="primary-button interactive-hover" onClick={onClose} style={{minWidth:'120px'}}>Close Shop</button>
+        </div>
         <FooterBrand />
+      </div>
+    </div>
+  );
+};
+
+// --- Skills Overlay ---
+interface SkillsOverlayProps {
+  player: PlayerProfile;
+  onClose: () => void;
+  performanceSummary: string;
+}
+
+const SkillsOverlay: React.FC<SkillsOverlayProps> = ({ player, onClose, performanceSummary }) => {
+  const profile = player.learningProfile || {};
+  const maxScore = Math.max(...Object.values(profile), 100);
+
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal-content">
+        <h2 className="design-title" style={{textAlign:'center'}}>📊 Skills Built</h2>
+        <p style={{textAlign:'center', color:'var(--text-muted)'}}>Look at how much your brain is growing!</p>
+        
+        <div style={{margin:'20px 0', display:'flex', flexDirection:'column', gap:'12px'}}>
+          {Object.entries(profile).length === 0 ? (
+            <p style={{textAlign:'center', fontStyle:'italic'}}>Play some games to see your skills grow!</p>
+          ) : (
+            Object.entries(profile).map(([skill, score]) => (
+              <div key={skill} style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                <div style={{width:'120px', fontSize:'0.9rem', fontWeight:'bold', textAlign:'right'}}>{skill}</div>
+                <div style={{flex:1, background:'#eee', borderRadius:'10px', height:'16px', overflow:'hidden'}}>
+                  <div style={{
+                    width: `${Math.min(100, (score / maxScore) * 100)}%`,
+                    background: 'linear-gradient(90deg, #4cc9f0, #48dbfb)',
+                    height:'100%', borderRadius:'10px',
+                    transition: 'width 1s ease-out'
+                  }} />
+                </div>
+                <div style={{width:'40px', fontSize:'0.85rem', color:'#666'}}>{score}</div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div style={{background:'#f0f8ff', padding:'12px', borderRadius:'12px', fontSize:'0.9rem', color:'#0b3d91'}}>
+          <strong>Coach's Note:</strong> {performanceSummary}
+        </div>
+
+        <div style={{marginTop:20, display:'flex', justifyContent:'center'}}>
+          <button className="primary-button interactive-hover" onClick={onClose}>Awesome!</button>
+        </div>
+        <FooterBrand />
+      </div>
+    </div>
+  );
+};
+
+// --- Tour Overlay ---
+const TourOverlay: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const [step, setStep] = useState(0);
+  const steps = [
+    { id: 'tour-nav', text: "Here is your menu! Check your prizes, skills, or ask a parent for help.", position: 'bottom' },
+    { id: 'tour-profile', text: "This is you! See your points and change your avatar here.", position: 'bottom' },
+    { id: 'tour-arcade', text: "Pick a game here! Swipe to see more.", position: 'top' },
+  ];
+
+  const currentStep = steps[step];
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+
+  useEffect(() => {
+    const el = document.getElementById(currentStep.id);
+    if (el) {
+      setTargetRect(el.getBoundingClientRect());
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [step, currentStep.id]);
+
+  const handleNext = () => {
+    if (step < steps.length - 1) {
+      setStep(s => s + 1);
+      playSound('click');
+    } else {
+      onClose();
+      playSound('success');
+    }
+  };
+
+  if (!targetRect) return null;
+
+  return (
+    <div className="tour-overlay" style={{ position: 'fixed', inset: 0, zIndex: 100 }}>
+      {/* Highlight border with massive shadow to create "hole" effect */}
+      <div style={{
+        position: 'absolute',
+        left: targetRect.left - 4,
+        top: targetRect.top - 4,
+        width: targetRect.width + 8,
+        height: targetRect.height + 8,
+        border: '4px solid #ff6b6b',
+        borderRadius: '12px',
+        boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+        pointerEvents: 'none',
+        transition: 'all 0.3s ease'
+      }} />
+
+      {/* Tooltip */}
+      <div style={{
+        position: 'absolute',
+        left: Math.max(10, Math.min(window.innerWidth - 310, targetRect.left + (targetRect.width / 2) - 150)),
+        top: currentStep.position === 'bottom' ? targetRect.bottom + 20 : targetRect.top - 160,
+        width: 300,
+        background: 'white',
+        padding: '16px',
+        borderRadius: '16px',
+        boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+        pointerEvents: 'auto',
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        zIndex: 101
+      }}>
+        <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>{currentStep.text}</p>
+        <button className="primary-button" onClick={handleNext} style={{ alignSelf: 'center' }}>
+          {step === steps.length - 1 ? "Let's Play!" : "Next ➡"}
+        </button>
       </div>
     </div>
   );
