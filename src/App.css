@@ -53,23 +53,30 @@
 }
 /* --- Modern, design-savvy styles for overlays and music section --- */
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Inter:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;700&family=Playfair+Display:wght@700&display=swap');
 
 .design-title {
-  font-family: 'Montserrat', 'Inter', Arial, sans-serif;
+  font-family: 'Montserrat', 'Inter', 'Playfair Display', 'Fira Sans', Arial, sans-serif;
   font-weight: 900;
   font-size: 2.5rem;
   letter-spacing: -1px;
   color: #ff6f61;
   margin-bottom: 0.1em;
-  text-shadow: 0 2px 12px #fffbe8cc, 0 1px 0 #fff;
+  text-shadow: 0 2px 12px #fffbe8cc, 0 1px 0 #fff, 0 4px 24px #ffe7e7cc;
+  font-variant-ligatures: contextual;
+  font-feature-settings: "ss01" on, "ss02" on;
+  line-height: 1.08;
 }
 .design-subtitle {
-  font-family: 'Inter', Arial, sans-serif;
+  font-family: 'Fira Sans', 'Montserrat', 'Inter', 'Playfair Display', Arial, sans-serif;
   font-weight: 600;
-  font-size: 1.15rem;
+  font-size: 1.18rem;
   color: #2d6a4f;
   margin-top: 0.1em;
   letter-spacing: 0.01em;
+  font-style: italic;
+  text-shadow: 0 1px 8px #fffbe8cc;
+  font-variant: small-caps;
 }
 
 .main-overlay-nav {
@@ -259,6 +266,161 @@
   box-shadow: 0 10px 32px rgba(0,0,0,0.38);
   color: #1a1a1a;
   border: 4px solid #ffb347;
+}
+
+/* Arcade carousel styles for game selection */
+.arcade-section {
+  max-width: 900px;
+  margin: 0 auto 2.5rem auto;
+  padding: 2.2rem 1.2rem 2.2rem 1.2rem;
+  background: linear-gradient(180deg, #fffbe8 60%, #ffe7e7 100%);
+  border-radius: 28px;
+  box-shadow: 0 8px 32px rgba(255,183,71,0.18);
+  border: 4px solid #ffb347;
+  text-align: center;
+}
+
+.carousel-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.2vw;
+  margin: 2.2rem 0 1.2rem 0;
+}
+
+.carousel-nav {
+  background: #fffbe8;
+  border: 2.5px solid #ffb347;
+  color: #ff6f61;
+  font-size: 2.2rem;
+  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(255,183,71,0.10);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border 0.18s, transform 0.18s;
+}
+.carousel-nav:focus, .carousel-nav:hover {
+  background: #ffe7e7;
+  color: #2d6a4f;
+  border-color: #ff6f61;
+  transform: scale(1.08);
+}
+
+.game-card {
+  background: linear-gradient(135deg, #fffbe8 70%, #ffe7e7 100%);
+  border: 4px solid #ffb347;
+  border-radius: 28px;
+  box-shadow: 0 8px 32px rgba(255,183,71,0.18), 0 2px 10px rgba(0,0,0,0.10);
+  color: #1a1a1a;
+  min-width: clamp(270px, 38vw, 370px);
+  max-width: 98vw;
+  padding: 2.2rem 1.2rem 1.6rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Montserrat', 'Inter', Arial, sans-serif;
+  font-size: 1.18rem;
+  position: relative;
+  z-index: 1;
+  transition: box-shadow 0.18s, border 0.18s, transform 0.18s;
+}
+.game-card:focus-within, .game-card:hover {
+  box-shadow: 0 12px 40px #ffb34733, 0 2px 10px rgba(0,0,0,0.13);
+  border-color: #ff6f61;
+  transform: scale(1.04);
+}
+.game-card h3 {
+  font-size: 2.1rem;
+  font-weight: 900;
+  color: #ff6f61;
+  margin-bottom: 0.2em;
+  letter-spacing: -1px;
+  text-shadow: 0 2px 12px #fffbe8cc, 0 1px 0 #fff;
+}
+.game-card .game-pill {
+  background: #ffb347;
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 0.3em 1.1em;
+  margin-bottom: 0.7em;
+  display: inline-block;
+}
+.game-card .game-tagline {
+  color: #2d6a4f;
+  font-size: 1.15rem;
+  margin-bottom: 0.7em;
+  font-weight: 600;
+}
+.game-card .game-meta {
+  color: #1a1a1a;
+  font-size: 1.02rem;
+  margin-bottom: 0.7em;
+}
+.game-card .skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 1.1em;
+}
+.game-card .skill-chip {
+  background: #fffbe8;
+  color: #ff6f61;
+  border: 2px solid #ffb347;
+  border-radius: 10px;
+  padding: 0.3em 0.9em;
+  font-size: 0.98rem;
+  font-weight: 700;
+  box-shadow: 0 1px 4px #ffb34722;
+}
+.game-card .game-play-button {
+  margin-top: 1.2em;
+  font-size: 1.25rem;
+  padding: 1.1rem 2.2rem;
+  border-radius: 16px;
+}
+
+@media (max-width: 800px) {
+  .arcade-section {
+    padding: 1.1rem 0.5rem 1.1rem 0.5rem;
+  }
+  .carousel-wrapper {
+    gap: 1vw;
+    margin: 1.1rem 0 0.7rem 0;
+  }
+  .game-card {
+    min-width: clamp(180px, 60vw, 320px);
+    padding: 1.1rem 0.5rem 1.1rem 0.5rem;
+    font-size: 1.05rem;
+  }
+  .carousel-nav {
+    width: 48px;
+    height: 48px;
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 500px) {
+  .arcade-section {
+    padding: 0.7rem 0.1rem 0.7rem 0.1rem;
+  }
+  .game-card {
+    min-width: 98vw;
+    padding: 0.7rem 0.1rem 0.7rem 0.1rem;
+    font-size: 0.98rem;
+  }
+  .carousel-nav {
+    width: 38px;
+    height: 38px;
+    font-size: 1.1rem;
+  }
 }
 
 .game-instructions { font-size: 1.05rem; margin-bottom: 10px; }
