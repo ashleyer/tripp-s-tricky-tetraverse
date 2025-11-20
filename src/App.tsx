@@ -137,7 +137,7 @@ const App: React.FC = () => {
 
   const [selectedGame, setSelectedGame] = useState<GameId | null>(null);
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
-  const [showParentOverlay, setShowParentOverlay] = useState<boolean>(true);
+  const [showParentOverlay, setShowParentOverlay] = useState<boolean>(false);
   const [showPlayersOverlay, setShowPlayersOverlay] = useState<boolean>(false);
   const [showAboutOverlay, setShowAboutOverlay] = useState<boolean>(false);
   const [showIntro, setShowIntro] = useState<boolean>(true);
@@ -670,8 +670,6 @@ const App: React.FC = () => {
         <IntroBanner
           onBegin={() => {
             setShowIntro(false);
-            // close parent overlay if it's open
-            setShowParentOverlay(false);
           }}
         />
       )}
@@ -1234,12 +1232,12 @@ const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport }) 
 
   return (
     <div
-      className="modal-backdrop"
+      className="modal-backdrop parent-modal-backdrop"
       role="dialog"
       aria-modal="true"
       aria-label="Information for parents"
     >
-      <div className="modal-content">
+      <div className="modal-content parent-modal-content">
         <h2>For Parents & Caregivers</h2>
         <p>
           This little arcade was designed to be <strong>gentle, low-pressure, and kid-friendly</strong>.

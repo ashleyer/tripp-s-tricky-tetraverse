@@ -1,3 +1,14 @@
+/* Parent modal backdrop for better readability */
+.parent-modal-backdrop {
+  background: rgba(30, 30, 40, 0.85) !important;
+  z-index: 1002;
+}
+.parent-modal-content {
+  background: #fff !important;
+  color: #222 !important;
+  border-radius: 16px;
+  box-shadow: 0 4px 32px 0 rgba(0,0,0,0.18);
+}
 #root {
   max-width: 1280px;
   margin: 0 auto;
