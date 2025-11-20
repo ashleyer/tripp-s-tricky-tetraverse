@@ -91,7 +91,33 @@
   to { transform: translateX(140vw); }
 }
 
-.plane.fly { animation-name: fly-across; animation-timing-function: linear; animation-iteration-count: infinite; }
+.plane.fly { animation-name: fly-swoop; animation-timing-function: linear; animation-iteration-count: infinite; }
+
+@keyframes fly-swoop {
+  0% { transform: translateX(0) translateY(0) rotate(0deg); }
+  25% { transform: translateX(25vw) translateY(-14px) rotate(-6deg); }
+  50% { transform: translateX(50vw) translateY(8px) rotate(8deg); }
+  75% { transform: translateX(80vw) translateY(-6px) rotate(-4deg); }
+  100% { transform: translateX(140vw) translateY(0) rotate(0deg); }
+}
+
+/* Confetti / particle pieces used for celebratory feedback */
+.confetti-piece {
+  position: absolute;
+  width: 10px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0.95;
+  transform-origin: center;
+  will-change: transform, opacity;
+  animation: confetti-fall var(--d, 1800ms) linear forwards;
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translateY(260px) rotate(360deg); opacity: 0; }
+}
 
 /* make general controls and play buttons larger for toddlers */
 .primary-button, .secondary-button { padding: 0.8rem 1.2rem; font-size: 1.05rem; border-radius: 12px; }
