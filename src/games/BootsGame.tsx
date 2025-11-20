@@ -121,7 +121,10 @@ const BootsGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
     <div className="game-panel" ref={containerRef} style={{ 
       overflow: 'hidden', 
       position: 'relative',
-      background: `linear-gradient(to bottom, #ffffff 0%, ${targetColor.hex}22 100%)`
+      background: `linear-gradient(to bottom, #ffffff 0%, ${targetColor.hex}22 100%)`,
+      minHeight: '80vh',
+      display: 'flex',
+      flexDirection: 'column'
     }}>
       <div style={{ 
         position: 'absolute', top: 0, left: 0, right: 0, 
@@ -142,7 +145,7 @@ const BootsGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
         </div>
       </div>
 
-      <div className="boots-rain-area" style={{ position: 'relative', height: '100%', marginTop: '60px' }}>
+      <div className="boots-rain-area" style={{ position: 'relative', flex: 1, marginTop: '60px' }}>
         {boots.map(boot => (
           <button
             key={boot.id}
@@ -192,7 +195,7 @@ const BootsGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
       <style>{`
         @keyframes fall {
           from { transform: translateY(0px) rotate(-5deg); }
-          to { transform: translateY(600px) rotate(5deg); }
+          to { transform: translateY(90vh) rotate(5deg); }
         }
         .falling-boot:active { transform: scale(0.9); }
         .boot-splashed { transform: scale(1.4) rotate(15deg) !important; opacity: 0 !important; transition: all 0.3s ease-out !important; }

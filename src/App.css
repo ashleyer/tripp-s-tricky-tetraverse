@@ -994,3 +994,28 @@ button, a, .interactive-hover, .game-card, .player-widget, .prize-widget-btn, .m
   z-index: 9999;
   animation: particle-pop 0.8s ease-out forwards;
 }
+
+/* Sticky Header Container */
+.sticky-top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 900;
+  background: rgba(11, 61, 145, 0.95); /* Matches --bg-primary with slight transparency */
+  backdrop-filter: blur(8px);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  margin-bottom: 1rem;
+}
+
+/* Adjust margins when inside sticky bar to be more compact */
+.sticky-top-bar .app-header {
+  margin: 0.5rem auto 0.5rem auto;
+  padding: 1rem;
+}
+
+.sticky-top-bar .main-overlay-nav {
+  margin: 0.5rem auto 0.5rem auto;
+}
+
+/* Ensure content below doesn't get hidden if we used fixed, but sticky handles it. */

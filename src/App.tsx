@@ -145,7 +145,7 @@ const App: React.FC = () => {
   const [showParentOverlay, setShowParentOverlay] = useState<boolean>(false);
   const [showPlayersOverlay, setShowPlayersOverlay] = useState<boolean>(false);
   const [showAboutOverlay, setShowAboutOverlay] = useState<boolean>(false);
-  const [showIntro, setShowIntro] = useState<boolean>(true);
+  const [showIntro, setShowIntro] = useState<boolean>(!player.name);
   const [showTour, setShowTour] = useState<boolean>(false);
   const [pendingTour, setPendingTour] = useState<boolean>(false);
   const [showTutorial, setShowTutorial] = useState<{
@@ -519,47 +519,49 @@ const App: React.FC = () => {
     <div className={`app-root ${selectedGame ? "in-game" : ""}`}>
       <GlobalEffects />
 
-      <header className="app-header" aria-label="Tripp's Tricky Tetraverse">
-        <div className="header-main">
-          <div className="header-text-block">
-            <h1 className="app-title design-title" aria-label="Tripp's Tricky Tetraverse">
-              Tripp's Tricky Tetraverse
-            </h1>
-            <p className="app-subtitle design-subtitle" style={{ fontFamily: '"Rubik Bubbles", cursive', letterSpacing: '0.05em' }}>an All Four You arcade</p>
+      <div className="sticky-top-bar">
+        <header className="app-header" aria-label="Tripp's Tricky Tetraverse">
+          <div className="header-main">
+            <div className="header-text-block">
+              <h1 className="app-title design-title" aria-label="Tripp's Tricky Tetraverse">
+                Tripp's Tricky Tetraverse
+              </h1>
+              <p className="app-subtitle design-subtitle" style={{ fontFamily: '"Rubik Bubbles", cursive', letterSpacing: '0.05em' }}>an All Four You arcade</p>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Navigation Bar */}
-      <nav className="main-overlay-nav" id="tour-nav">
-        <ul className="overlay-list">
-          <li>
-            <button className="overlay-nav-btn interactive-hover" onClick={() => setShowPlayersOverlay(true)}>
-              Players {player.avatarUrl ? '🙂' : ''}
-            </button>
-          </li>
-          <li>
-            <button className="overlay-nav-btn interactive-hover" onClick={() => setShowPrizeShop(true)}>
-              Prize Shop 🏆
-            </button>
-          </li>
-          <li>
-            <button className="overlay-nav-btn interactive-hover" onClick={() => setShowSkillsOverlay(true)}>
-              Skills Built 📊
-            </button>
-          </li>
-          <li>
-            <button className="overlay-nav-btn interactive-hover" onClick={() => setShowParentOverlay(true)}>
-              Parents 🛡️
-            </button>
-          </li>
-          <li>
-            <button className="overlay-nav-btn interactive-hover" onClick={() => setShowAboutOverlay(true)}>
-              About ℹ️
-            </button>
-          </li>
-        </ul>
-      </nav>
+        {/* Main Navigation Bar */}
+        <nav className="main-overlay-nav" id="tour-nav">
+          <ul className="overlay-list">
+            <li>
+              <button className="overlay-nav-btn interactive-hover" onClick={() => setShowPlayersOverlay(true)}>
+                Players {player.avatarUrl ? '🙂' : ''}
+              </button>
+            </li>
+            <li>
+              <button className="overlay-nav-btn interactive-hover" onClick={() => setShowPrizeShop(true)}>
+                Prize Shop 🏆
+              </button>
+            </li>
+            <li>
+              <button className="overlay-nav-btn interactive-hover" onClick={() => setShowSkillsOverlay(true)}>
+                Skills Built 📊
+              </button>
+            </li>
+            <li>
+              <button className="overlay-nav-btn interactive-hover" onClick={() => setShowParentOverlay(true)}>
+                Parents 🛡️
+              </button>
+            </li>
+            <li>
+              <button className="overlay-nav-btn interactive-hover" onClick={() => setShowAboutOverlay(true)}>
+                About ℹ️
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
 
       {/* Player Profile & Points Section */}
       <section className="profile-section" id="tour-profile" aria-label="Current Player">
@@ -1138,11 +1140,14 @@ const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport, sc
         <h2>For Parents & Caregivers</h2>
         
         <div style={{background: 'rgba(30, 80, 200, 0.06)', padding: '1rem', borderRadius: '12px', marginBottom: '1rem'}}>
-          <h3 style={{marginTop:0, fontSize:'1.1rem'}}>Screen Time Controls (Optional)</h3>
+          <h3 style={{marginTop:0, fontSize:'1.1rem'}}>Screen Time Controls</h3>
+          <p style={{fontSize:'0.9rem', color:'var(--text-muted)', margin:'-4px 0 12px 0'}}>
+            (Optional) Leave blank for unlimited play.
+          </p>
           <form onSubmit={handleSubmit} style={{display:'flex', gap:'8px', alignItems:'flex-end'}}>
             <label className="form-label" style={{marginBottom:0}}>
               Set Limit (minutes)
-              <input type="number" name="minutes" min="1" max="120" placeholder="e.g. 20" style={{width:'100px'}} />
+              <input type="number" name="minutes" min="1" max="120" placeholder="Unlimited" style={{width:'100px'}} />
             </label>
             <button type="submit" className="primary-button" style={{padding:'0.5rem 1rem', fontSize:'0.9rem'}}>Set</button>
           </form>
