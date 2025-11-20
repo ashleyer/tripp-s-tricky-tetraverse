@@ -1336,7 +1336,7 @@ const IntroBanner: React.FC<IntroBannerProps> = ({ onBegin }) => {
             Tap to Begin
           </button>
         </div>
-        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Parents: Tap <strong>For Parents</strong></p>
+        {/* <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Parents: Tap <strong>For Parents</strong></p> */}
         <FooterBrand />
       </div>
     </div>
