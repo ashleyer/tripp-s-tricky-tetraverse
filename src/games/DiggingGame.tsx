@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { playSound } from '../utils/sound';
+import { GameOverModal } from '../components/UI';
 
 interface SimpleGameProps {
   onFinish: (score: number, attempts: number, metrics?: Record<string, number>) => void;
@@ -11,11 +12,13 @@ const DiggingGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
   const [treasureIndex, setTreasureIndex] = useState<number>(0);
   const [dug, setDug] = useState<number[]>([]);
   const [found, setFound] = useState(false);
+  const [scoreEarned, setScoreEarned] = useState(0);
 
   const startNewGame = () => {
     setTreasureIndex(Math.floor(Math.random() * cells.length));
     setDug([]);
     setFound(false);
+    setScoreEarned(0);
     playSound('click');
   };
 
@@ -33,6 +36,7 @@ const DiggingGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
       setFound(true);
       const attempts = newDug.length;
       const score = Math.max(10, 100 - (attempts - 1) * 15);
+      setScoreEarned(score);
       onFinish(score, attempts, { persistence: attempts });
     } else if (newDug.length === cells.length) {
       playSound('fail');
@@ -74,27 +78,11 @@ const DiggingGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
         })}
       </div>
       {found && (
-        <div className="game-success-message" style={{ textAlign: 'center', marginTop: '1rem' }}>
-          <p style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
-            You found the loot! Nice digging, matey!
-          </p>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <button 
-              className="primary-button interactive-hover" 
-              onClick={startNewGame}
-            >
-              Play Again 🔄
-            </button>
-            {onExit && (
-              <button 
-                className="secondary-button interactive-hover" 
-                onClick={onExit}
-              >
-                Back to Menu 🏠
-              </button>
-            )}
-          </div>
-        </div>
+        <GameOverModal
+          score={scoreEarned}
+          onPlayAgain={startNewGame}
+          onBack={onExit || (() => {})}
+        />
       )}
     </div>
   );

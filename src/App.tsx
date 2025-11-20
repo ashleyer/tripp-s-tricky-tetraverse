@@ -189,6 +189,8 @@ const App: React.FC = () => {
     cost?: number;
   }>({ open: false });
 
+  const [lastPlayedGameId, setLastPlayedGameId] = useState<GameId | null>(null);
+
   const [tempName, setTempName] = useState("");
   const [tempAge, setTempAge] = useState("");
 
@@ -405,6 +407,7 @@ const App: React.FC = () => {
       setShowTutorial({ gameId, visible: true });
       return;
     }
+    setLastPlayedGameId(gameId);
     setSelectedGame(gameId);
   };
 
@@ -679,7 +682,7 @@ const App: React.FC = () => {
 
       {/* Arcade vs specific game */}
       {showArcade ? (
-        <ArcadeView canPlay={canPlay} onSelectGame={handleSelectGame} />
+        <ArcadeView canPlay={canPlay} onSelectGame={handleSelectGame} initialGameId={lastPlayedGameId} />
       ) : selectedGame ? (
         <GameView
           gameId={selectedGame}
@@ -701,7 +704,7 @@ const App: React.FC = () => {
           onClose={() => {
             const key = `seenTutorial:${showTutorial.gameId}`;
             try {
-              localStorage.setItem(key, "1");
+              localStorage.setItem(key, Date.now().toString());
             } catch (e) {
               // ignore storage errors
             }
@@ -823,11 +826,18 @@ const App: React.FC = () => {
 interface ArcadeViewProps {
   canPlay: boolean;
   onSelectGame: (gameId: GameId) => void;
+  initialGameId: GameId | null;
 }
 
-const ArcadeView: React.FC<ArcadeViewProps> = ({ canPlay, onSelectGame }) => {
-  const [index, setIndex] = useState(0);
+const ArcadeView: React.FC<ArcadeViewProps> = ({ canPlay, onSelectGame, initialGameId }) => {
   const gameIds: GameId[] = ["memory", "digging", "boots", "airplanes"];
+  const [index, setIndex] = useState(() => {
+    if (initialGameId) {
+      const found = gameIds.indexOf(initialGameId);
+      return found !== -1 ? found : 0;
+    }
+    return 0;
+  });
 
   const currentGameId = gameIds[index];
   const currentGame = GAME_METADATA[currentGameId];
@@ -1128,7 +1138,7 @@ const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport, sc
         <h2>For Parents & Caregivers</h2>
         
         <div style={{background: 'rgba(30, 80, 200, 0.06)', padding: '1rem', borderRadius: '12px', marginBottom: '1rem'}}>
-          <h3 style={{marginTop:0, fontSize:'1.1rem'}}>Screen Time Controls</h3>
+          <h3 style={{marginTop:0, fontSize:'1.1rem'}}>Screen Time Controls (Optional)</h3>
           <form onSubmit={handleSubmit} style={{display:'flex', gap:'8px', alignItems:'flex-end'}}>
             <label className="form-label" style={{marginBottom:0}}>
               Set Limit (minutes)

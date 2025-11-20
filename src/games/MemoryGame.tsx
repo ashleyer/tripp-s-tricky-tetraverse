@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { playSound } from '../utils/sound';
+import { GameOverModal } from '../components/UI';
 
 interface SimpleGameProps {
   onFinish: (score: number, attempts: number, metrics?: Record<string, number>) => void;
@@ -17,6 +18,7 @@ const MemoryGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
   const [matchedIndexes, setMatchedIndexes] = useState<number[]>([]);
   const [attempts, setAttempts] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [scoreEarned, setScoreEarned] = useState(0);
   const firstFlipTimestamp = useRef<number | null>(null);
   const holdTimes = useRef<number[]>([]);
 
@@ -27,6 +29,7 @@ const MemoryGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
     setMatchedIndexes([]);
     setAttempts(0);
     setFinished(false);
+    setScoreEarned(0);
     firstFlipTimestamp.current = null;
     holdTimes.current = [];
     playSound('click');
@@ -65,9 +68,11 @@ const MemoryGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
           if (next.length === cards.length) {
             setFinished(true);
             const score = 100 - (attempts + 1 - cards.length / 2) * 10;
+            const finalScore = Math.max(10, score);
+            setScoreEarned(finalScore);
             const avgHold = holdTimes.current.length ? (holdTimes.current.reduce((s,n)=>s+n,0)/holdTimes.current.length) : 0;
             const concentration = Math.min(100, Math.round(avgHold * 20));
-            onFinish(Math.max(10, score), attempts + 1, { concentration, avgHoldTime: Math.round(avgHold*100)/100 });
+            onFinish(finalScore, attempts + 1, { concentration, avgHoldTime: Math.round(avgHold*100)/100 });
           }
           return next;
         });
@@ -110,27 +115,11 @@ const MemoryGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
       </div>
       <p className="game-meta-small">Attempts: {attempts}</p>
       {finished && (
-        <div className="game-success-message" style={{ textAlign: 'center', marginTop: '1rem' }}>
-          <p style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
-            Great job! You matched all the cards!
-          </p>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <button 
-              className="primary-button interactive-hover" 
-              onClick={startNewGame}
-            >
-              Play Again 🔄
-            </button>
-            {onExit && (
-              <button 
-                className="secondary-button interactive-hover" 
-                onClick={onExit}
-              >
-                Back to Menu 🏠
-              </button>
-            )}
-          </div>
-        </div>
+        <GameOverModal
+          score={scoreEarned}
+          onPlayAgain={startNewGame}
+          onBack={onExit || (() => {})}
+        />
       )}
     </div>
   );

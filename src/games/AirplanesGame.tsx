@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { playSound } from '../utils/sound';
 import { createConfetti } from '../utils/confetti';
+import { GameOverModal } from '../components/UI';
 
 interface SimpleGameProps {
   onFinish: (score: number, attempts: number, metrics?: Record<string, number>) => void;
@@ -165,30 +166,11 @@ const AirplanesGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
         Airplanes Caught: {caughtCount} / {TOTAL_TARGETS}
       </p>
       {finished && (
-        <div className="game-success-message" style={{ textAlign: 'center', marginTop: '1rem' }}>
-          <p style={{ fontSize: '1.4rem', marginBottom: '0.5rem', color: 'var(--color-accent)', fontWeight: 'bold' }}>
-            YAY! You caught all the airplanes!
-          </p>
-          <p style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
-            You earned <strong>{scoreEarned}</strong> points!
-          </p>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <button 
-              className="primary-button interactive-hover" 
-              onClick={startNewGame}
-            >
-              Play Again 🔄
-            </button>
-            {onExit && (
-              <button 
-                className="secondary-button interactive-hover" 
-                onClick={onExit}
-              >
-                Back to Menu 🏠
-              </button>
-            )}
-          </div>
-        </div>
+        <GameOverModal
+          score={scoreEarned}
+          onPlayAgain={startNewGame}
+          onBack={onExit || (() => {})}
+        />
       )}
     </div>
   );
