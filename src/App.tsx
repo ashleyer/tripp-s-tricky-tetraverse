@@ -1472,9 +1472,16 @@ interface PrizeShopProps {
 
 const PrizeShop: React.FC<PrizeShopProps> = ({ player, onClose, onRedeem }) => {
   const prizes = [
-    { id: 'sticker', label: 'Sticker', cost: 5 },
-    { id: 'badge', label: 'Badge', cost: 12 },
-    { id: 'toy', label: 'Small Toy', cost: 25 }
+    { id: 'lollipop', label: '🍭 Lollipop', cost: 5 },
+    { id: 'chocolate', label: '🍫 Chocolate Bar', cost: 8 },
+    { id: 'pixie', label: '🍬 Giant Pixie Stick', cost: 10 },
+    { id: 'kite', label: '🪁 Kite', cost: 15 },
+    { id: 'teddy', label: '🧸 Teddy Bear', cost: 20 },
+    { id: 'rubix', label: '🧊 Rubix Cube', cost: 25 },
+    { id: 'doll', label: '🦸 Action Doll', cost: 30 },
+    { id: 'lava', label: '💡 Lava Lamp', cost: 40 },
+    { id: 'chess', label: '♟️ Chess Set', cost: 50 },
+    { id: 'tshirt', label: '👕 Tetraverse T-shirt', cost: 75 },
   ];
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
