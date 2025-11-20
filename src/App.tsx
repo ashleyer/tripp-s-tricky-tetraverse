@@ -1,4 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { _BASE, playSound } from './utils/sound';
+import { createConfetti } from './utils/confetti';
+import useAnnouncer from './hooks/useAnnouncer';
+import { FooterBrand } from './components/UI';
 
 type GameId = "memory" | "digging" | "boots" | "airplanes";
 
@@ -98,16 +102,6 @@ const GAME_METADATA: Record<
   },
 };
 
-// Simple sound helper – put matching .mp3 files in public/sounds.
-// Use Vite's `BASE_URL` so asset paths work when app is served from
-// a non-root base (GitHub Pages or similar).
-const _BASE = (import.meta as any).env?.BASE_URL ?? "/";
-const soundPaths: Record<string, string> = {
-  click: `${_BASE}sounds/click.mp3`,
-  success: `${_BASE}sounds/success.mp3`,
-  fail: `${_BASE}sounds/fail.mp3`,
-};
-
 // Background music choices. Use the app `public/sounds/` folder for bundled tracks.
 const MUSIC_TRACKS: { key: string; label: string; emoji: string; path: string }[] = [
   { key: "silent", label: "Silent", emoji: "🔇", path: "" },
@@ -118,33 +112,7 @@ const MUSIC_TRACKS: { key: string; label: string; emoji: string; path: string }[
   { key: "love", label: "Love", emoji: "💖", path: `${_BASE}sounds/love-in-japan.mp3` },
 ];
 
-function playSound(key: keyof typeof soundPaths) {
-  const path = soundPaths[key];
-  const audio = new Audio(path);
-  // we ignore play() promise errors so it doesn't crash on browsers that block autoplay
-  audio.play().catch(() => {});
-}
-
-// lightweight confetti generator appended to a container element
-function createConfetti(container: HTMLElement | null, count = 24) {
-  if (!container) return;
-  const colors = ["#ff7ab6", "#ffd166", "#60a5fa", "#4ade80", "#f97316"];
-  for (let i = 0; i < count; i++) {
-    const el = document.createElement("div");
-    el.className = "confetti-piece";
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    el.style.background = color;
-    // position inside container
-    const left = Math.random() * 80 + 10;
-    const top = Math.random() * 40 + 5;
-    el.style.left = `${left}%`;
-    el.style.top = `${top}%`;
-    const dur = 800 + Math.floor(Math.random() * 1600);
-    el.style.setProperty("--d", `${dur}ms`);
-    container.appendChild(el);
-    el.addEventListener("animationend", () => el.remove());
-  }
-}
+// createConfetti and playSound now live in utils modules
 
 const App: React.FC = () => {
   const [player, setPlayer] = useState<PlayerProfile>(() => {
@@ -210,16 +178,8 @@ const App: React.FC = () => {
     cost?: number;
   }>({ open: false });
 
-  // ARIA announcer text for screen readers; listens for custom events
-  const [announceText, setAnnounceText] = useState<string>("");
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail: any = (e as CustomEvent).detail;
-      if (typeof detail === "string") setAnnounceText(detail);
-    };
-    window.addEventListener("ttt-announce", handler as EventListener);
-    return () => window.removeEventListener("ttt-announce", handler as EventListener);
-  }, []);
+  // ARIA announcer: use shared hook that listens for `ttt-announce` events
+  const { announceText } = useAnnouncer();
 
   const [screenTime, setScreenTime] = useState<ScreenTimeState>({
     limitMinutes: null,
@@ -993,12 +953,7 @@ const App: React.FC = () => {
   );
 };
 
-// small branded footer used in modals and views
-const FooterBrand: React.FC = () => (
-  <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 10, textAlign: 'center' }} className="brand-footer">
-    Built with ❤️ in Boston by <a href="https://github.com/ashleyer" target="_blank" rel="noreferrer" style={{ color: 'var(--brand-darkgreen)' }}>@ashleyer</a>
-  </div>
-);
+// small branded footer used in modals and views is provided by `FooterBrand` component
 
 interface ArcadeViewProps {
   canPlay: boolean;
