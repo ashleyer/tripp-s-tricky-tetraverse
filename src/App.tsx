@@ -520,151 +520,157 @@ const App: React.FC = () => {
 
   return (
     <div className={`app-root ${selectedGame ? "in-game" : ""}`}>
+
       <header className="app-header" aria-label="Tripp's Tricky Tetraverse">
         <div className="header-main">
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span className="app-title-emoji" aria-hidden>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span className="app-title-emoji" aria-hidden style={{fontSize:'2.6rem',marginRight:8}}>
               🧸
             </span>
             <div>
-              <h1 className="app-title" aria-label="Tripp's Tricky Tetraverse">
+              <h1 className="app-title design-title" aria-label="Tripp's Tricky Tetraverse">
                 Tripp's Tricky Tetraverse
               </h1>
-              <p className="app-subtitle">an All Four You Arcade</p>
+              <p className="app-subtitle design-subtitle">an All Four You Arcade</p>
             </div>
           </div>
-        </div>
-        <div className="header-right">
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {MUSIC_TRACKS.map((t) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  className={`music-tile ${musicKey === t.key ? 'music-tile-selected' : ''}`}
-                  onClick={() => {
-                    playSound('click');
-                    setMusicKey(t.key);
-                    setBackgroundMusic(t.key, true);
-                    try {
-                      if (rememberMusic) {
-                        // persist choice to localStorage and per-player profile
-                        localStorage.setItem('musicKey', t.key);
-                        setPlayer((p) => ({ ...p, musicKey: t.key, musicVolume }));
-                      }
-                    } catch (e) {}
-                  }}
-                  aria-pressed={musicKey === t.key}
-                  aria-label={`Choose ${t.label} music`}
-                >
-                  <span aria-hidden style={{ fontSize: '1.1rem' }}>{t.emoji}</span>
-                  <span style={{ fontSize: '0.8rem', marginLeft: 6 }}>{t.label}</span>
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginLeft: 6, alignItems: 'center' }}>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => toggleMusicPlay()}
-                  aria-pressed={isMusicPlaying}
-                  aria-label={isMusicPlaying ? 'Pause background music' : 'Play background music'}
-                  title={isMusicPlaying ? 'Pause music' : 'Play music'}
-                >
-                  {isMusicPlaying ? '⏸️' : '▶️'}
-                </button>
-                <button
-                  type="button"
-                  className="secondary-button volume-icon"
-                  onClick={() => {
-                    // toggle mute/unmute
-                    if (musicVolume > 0) {
-                      prevVolumeRef.current = musicVolume;
-                      setMusicVolume(0);
-                      if (musicRef.current) musicRef.current.volume = 0;
-                    } else {
-                      const restore = prevVolumeRef.current || 0.45;
-                      setMusicVolume(restore);
-                      if (musicRef.current) musicRef.current.volume = restore;
-                    }
-                  }}
-                  aria-label={musicVolume > 0 ? 'Mute' : 'Unmute'}
-                  title={musicVolume > 0 ? 'Mute' : 'Unmute'}
-                >
-                  {musicVolume === 0 ? '🔇' : musicVolume < 0.33 ? '🔈' : musicVolume < 0.66 ? '🔉' : '🔊'}
-                </button>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={Math.round(musicVolume * 100)}
-                  onChange={(e) => {
-                    const v = Number(e.currentTarget.value) / 100;
-                    // remember previous sensible volume when the user mutes
-                    if (v > 0) prevVolumeRef.current = v;
-                    setMusicVolume(v);
-                    if (musicRef.current) musicRef.current.volume = v;
-                    try {
-                      if (rememberMusic) localStorage.setItem('musicVolume', String(v));
-                    } catch (e) {}
-                  }}
-                  aria-label="Music volume"
-                  style={{ width: 120 }}
-                />
-              </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem' }}>
-                <input
-                  type="checkbox"
-                  checked={rememberMusic}
-                  onChange={(e) => {
-                    const v = e.currentTarget.checked;
-                    setRememberMusic(v);
-                    try {
-                      localStorage.setItem('rememberMusic', v ? '1' : '0');
-                      if (v) {
-                        // persist current music preferences to the player profile
-                        setPlayer((p) => ({ ...p, musicKey, musicVolume }));
-                      } else {
-                        localStorage.removeItem('musicKey');
-                        localStorage.removeItem('musicVolume');
-                      }
-                    } catch (e) {}
-                  }}
-                />
-                Remember
-              </label>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="parent-button"
-            onClick={() => setShowParentOverlay(true)}
-            aria-label="Open information for parents"
-          >
-            For Parents
-          </button>
-          <button
-            type="button"
-            className="parent-button"
-            onClick={() => setShowPlayersOverlay(true)}
-            aria-label="Players"
-            style={{ marginLeft: 8 }}
-          >
-            Players
-          </button>
-          <button
-            type="button"
-            className="parent-button"
-            onClick={() => setShowAboutOverlay(true)}
-            aria-label="About this app"
-            style={{ marginLeft: 8 }}
-          >
-            About
-          </button>
         </div>
       </header>
+
+      {/* Overlay buttons below title banner */}
+      <nav className="main-overlay-nav" aria-label="App info and settings">
+        <ul className="overlay-list">
+          <li>
+            <button
+              type="button"
+              className="parent-button overlay-nav-btn"
+              onClick={() => setShowParentOverlay(true)}
+              aria-label="Open information for parents"
+            >
+              Information for Parents
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              className="parent-button overlay-nav-btn"
+              onClick={() => setShowPlayersOverlay(true)}
+              aria-label="Players"
+            >
+              Players
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              className="parent-button overlay-nav-btn"
+              onClick={() => setShowAboutOverlay(true)}
+              aria-label="About this app"
+            >
+              About
+            </button>
+          </li>
+        </ul>
+      </nav>
+
+      {/* Music choice section below overlays */}
+      <section className="music-choice-section" aria-label="Background music selection">
+        <h2 className="music-choice-title">🎵 Choose Your Arcade Music</h2>
+        <p className="music-choice-prompt">Pick a background tune for your play session. You can change it anytime!</p>
+        <div className="music-thumbnails-row">
+          {MUSIC_TRACKS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              className={`music-tile design-music-tile ${musicKey === t.key ? 'music-tile-selected' : ''}`}
+              onClick={() => {
+                playSound('click');
+                setMusicKey(t.key);
+                setBackgroundMusic(t.key, true);
+                try {
+                  if (rememberMusic) {
+                    localStorage.setItem('musicKey', t.key);
+                    setPlayer((p) => ({ ...p, musicKey: t.key, musicVolume }));
+                  }
+                } catch (e) {}
+              }}
+              aria-pressed={musicKey === t.key}
+              aria-label={`Choose ${t.label} music`}
+            >
+              <span aria-hidden style={{ fontSize: '1.5rem', display:'block' }}>{t.emoji}</span>
+              <span className="music-label" style={{ fontSize: '1rem', marginTop: 4 }}>{t.label}</span>
+            </button>
+          ))}
+        </div>
+        <div className="music-controls-row">
+          <button
+            type="button"
+            className="secondary-button design-music-btn"
+            onClick={() => toggleMusicPlay()}
+            aria-pressed={isMusicPlaying}
+            aria-label={isMusicPlaying ? 'Pause background music' : 'Play background music'}
+            title={isMusicPlaying ? 'Pause music' : 'Play music'}
+          >
+            {isMusicPlaying ? '⏸️ Pause' : '▶️ Play'}
+          </button>
+          <button
+            type="button"
+            className="secondary-button design-music-btn volume-icon"
+            onClick={() => {
+              if (musicVolume > 0) {
+                prevVolumeRef.current = musicVolume;
+                setMusicVolume(0);
+                if (musicRef.current) musicRef.current.volume = 0;
+              } else {
+                const restore = prevVolumeRef.current || 0.45;
+                setMusicVolume(restore);
+                if (musicRef.current) musicRef.current.volume = restore;
+              }
+            }}
+            aria-label={musicVolume > 0 ? 'Mute' : 'Unmute'}
+            title={musicVolume > 0 ? 'Mute' : 'Unmute'}
+          >
+            {musicVolume === 0 ? '🔇 Mute' : musicVolume < 0.33 ? '🔈 Low' : musicVolume < 0.66 ? '🔉 Med' : '🔊 Loud'}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={Math.round(musicVolume * 100)}
+            onChange={(e) => {
+              const v = Number(e.currentTarget.value) / 100;
+              if (v > 0) prevVolumeRef.current = v;
+              setMusicVolume(v);
+              if (musicRef.current) musicRef.current.volume = v;
+              try {
+                if (rememberMusic) localStorage.setItem('musicVolume', String(v));
+              } catch (e) {}
+            }}
+            aria-label="Music volume"
+            className="music-volume-slider"
+          />
+          <label className="music-remember-label">
+            <input
+              type="checkbox"
+              checked={rememberMusic}
+              onChange={(e) => {
+                const v = e.currentTarget.checked;
+                setRememberMusic(v);
+                try {
+                  localStorage.setItem('rememberMusic', v ? '1' : '0');
+                  if (v) {
+                    setPlayer((p) => ({ ...p, musicKey, musicVolume }));
+                  } else {
+                    localStorage.removeItem('musicKey');
+                    localStorage.removeItem('musicVolume');
+                  }
+                } catch (e) {}
+              }}
+            />
+            Remember
+          </label>
+        </div>
+      </section>
 
       {showIntro && (
         <IntroBanner
@@ -1506,6 +1512,16 @@ const AboutOverlay: React.FC<AboutOverlayProps> = ({ onClose }) => {
           Parents can set a screen-time limit, and the app keeps playful
           progress notes that never leave the browser. The games are short
           and non-competitive — great for little hands and growing minds.
+        </p>
+        <p style={{ marginTop: '1rem', fontSize: '0.98rem' }}>
+          <a
+            href="https://github.com/ashleyer/tripp-s-tricky-tetraverse"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'var(--brand-darkgreen)', textDecoration: 'underline' }}
+          >
+            View this project on GitHub
+          </a>
         </p>
         <div style={{ marginTop: "1rem" }}>
           <button className="primary-button" onClick={onClose}>
