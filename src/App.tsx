@@ -988,16 +988,18 @@ const ArcadeView: React.FC<ArcadeViewProps> = ({ canPlay, onSelectGame }) => {
       aria-label="Game selection carousel"
       aria-live="polite"
     >
-      <h2>Pick a Game from the Arcade</h2>
-      <p className="arcade-blurb">
-        Swipe through the games, read what skills they build, and press play to
-        start.
-      </p>
+      <div className="arcade-heading-block">
+        <h2 className="arcade-title design-title">Pick a Game from the Arcade</h2>
+        <p className="arcade-blurb">
+          Swipe through the games, read what skills they build, and press play to
+          start.
+        </p>
+      </div>
 
       <div className="carousel-wrapper">
         <button
           type="button"
-          className="carousel-nav"
+          className="carousel-nav parent-button overlay-nav-btn"
           onClick={prev}
           aria-label="Previous game"
         >
@@ -1034,7 +1036,7 @@ const ArcadeView: React.FC<ArcadeViewProps> = ({ canPlay, onSelectGame }) => {
 
         <button
           type="button"
-          className="carousel-nav"
+          className="carousel-nav parent-button overlay-nav-btn"
           onClick={next}
           aria-label="Next game"
         >
