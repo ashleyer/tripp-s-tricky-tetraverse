@@ -12,7 +12,7 @@
     <style>
       :root {
         /* Child-friendly pastel rainbow palette */
-        color-scheme: light dark;
+        color-scheme: light;
         --bg: #fff7f0; /* soft peach */
         --bg-soft: #fff1e6;
         --card-bg: #ffffff;
@@ -107,6 +107,46 @@
         align-items: center;
       }
 
+      .main-overlay-nav {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 1.6rem 0 1.2rem 0;
+        padding: 0.8rem 1rem;
+        border-radius: 18px;
+        border: 1px solid rgba(30, 80, 200, 0.24);
+        background: rgba(255, 255, 255, 0.85);
+        box-shadow: 0 8px 22px rgba(30, 80, 200, 0.12);
+      }
+
+      .overlay-list {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-evenly;
+        gap: 20px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        width: 100%;
+        flex-wrap: nowrap;
+      }
+
+      .overlay-list li {
+        flex: 1 1 auto;
+        display: flex;
+        justify-content: center;
+      }
+
+      @media (max-width: 640px) {
+        .overlay-list {
+          gap: 12px;
+        }
+        .overlay-list li {
+          flex: 0 0 auto;
+        }
+      }
+
       .parent-button,
       .primary-button,
       .secondary-button {
@@ -124,15 +164,15 @@
       }
 
       .parent-button {
-        background: rgba(15, 23, 42, 0.7);
-        color: var(--text-main);
-        border: 1px solid rgba(148, 163, 184, 0.7);
+        background: rgba(30, 80, 200, 0.18);
+        color: #0a2250;
+        border: 1px solid rgba(30, 80, 200, 0.32);
         box-shadow: var(--shadow-subtle);
       }
 
       .parent-button:hover {
         transform: translateY(-1px);
-        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
+        box-shadow: 0 10px 25px rgba(30, 80, 200, 0.4);
       }
 
       .primary-button {
@@ -153,7 +193,7 @@
       }
 
       .secondary-button:hover {
-        background: rgba(15, 23, 42, 0.8);
+        background: rgba(30, 80, 200, 0.12);
       }
 
       .profile-section,
@@ -213,7 +253,7 @@
       input[type="text"],
       input[type="number"],
       input[type="file"] {
-        background: #020617;
+        background: #ffffff;
         border-radius: 10px;
         border: 1px solid rgba(148, 163, 184, 0.5);
         padding: 0.45rem 0.6rem;
@@ -274,10 +314,10 @@
         align-items: center;
         gap: 0.25rem;
         padding: 0.3rem 0.6rem;
-        background: rgba(15, 23, 42, 0.9);
+        background: rgba(30, 80, 200, 0.12);
         border-radius: 999px;
-        border: 1px solid rgba(148, 163, 184, 0.6);
-        color: var(--text-main);
+        border: 1px solid rgba(30, 80, 200, 0.32);
+        color: #0a2250;
       }
 
       .avatar-pill-selected {
@@ -305,11 +345,11 @@
         width: 70px;
         height: 70px;
         border-radius: 18px;
-        border: 1px dashed rgba(148, 163, 184, 0.7);
+        border: 1px dashed rgba(148, 163, 184, 0.5);
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #020617;
+        background: #ffffff;
         overflow: hidden;
       }
 
@@ -356,21 +396,21 @@
 
       .carousel-nav {
         border-radius: 999px;
-        border: 1px solid rgba(148, 163, 184, 0.7);
+        border: 1px solid rgba(30, 80, 200, 0.32);
         padding: 0.4rem 0.7rem;
-        background: rgba(15, 23, 42, 0.9);
-        color: var(--text-main);
+        background: rgba(30, 80, 200, 0.16);
+        color: #0a2250;
         cursor: pointer;
       }
 
       .carousel-nav:hover {
-        background: rgba(15, 23, 42, 0.95);
+        background: rgba(30, 80, 200, 0.24);
       }
 
       .game-card {
         border-radius: var(--radius-lg);
-        background: radial-gradient(circle at top left, #022c22, #020617 55%);
-        border: 1px solid rgba(34, 197, 94, 0.4);
+        background: #ffffff;
+        border: 1px solid rgba(34, 197, 94, 0.25);
         padding: 1rem;
         box-shadow: var(--shadow-soft);
         display: flex;
@@ -413,8 +453,8 @@
         font-size: 0.75rem;
         padding: 0.25rem 0.55rem;
         border-radius: 999px;
-        background: rgba(15, 23, 42, 0.8);
-        border: 1px solid rgba(148, 163, 184, 0.6);
+        background: rgba(30, 80, 200, 0.12);
+        border: 1px solid rgba(30, 80, 200, 0.28);
       }
 
       .game-play-button {
@@ -560,9 +600,9 @@
 
       .game-panel {
         border-radius: var(--radius-lg);
-        background: radial-gradient(circle at top, #020617, #020617 65%);
+        background: #ffffff;
         padding: 0.8rem 1rem;
-        border: 1px solid rgba(148, 163, 184, 0.4);
+        border: 1px solid rgba(148, 163, 184, 0.25);
       }
 
       .game-instructions {
@@ -592,8 +632,8 @@
 
       .memory-card {
         border-radius: var(--radius-sm);
-        border: 1px solid rgba(148, 163, 184, 0.6);
-        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        background: #ffffff;
         height: 60px;
         font-size: 1.6rem;
         cursor: pointer;
@@ -612,15 +652,15 @@
 
       .dig-cell {
         border-radius: var(--radius-sm);
-        border: 1px solid rgba(148, 163, 184, 0.6);
+        border: 1px solid rgba(148, 163, 184, 0.4);
         height: 64px;
         font-size: 1.5rem;
         cursor: pointer;
-        background: #1e293b;
+        background: #ffffff;
       }
 
       .dig-cell-dug {
-        background: #020617;
+        background: #f5faf2;
       }
 
       .dig-cell-treasure {
@@ -639,8 +679,8 @@
         flex: 1 1 calc(33.3% - 0.4rem);
         min-width: 90px;
         border-radius: var(--radius-sm);
-        border: 1px solid rgba(148, 163, 184, 0.6);
-        background: #020617;
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        background: #ffffff;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -673,8 +713,8 @@
       .plane {
         border-radius: 999px;
         padding: 0.4rem 0.8rem;
-        border: 1px solid rgba(148, 163, 184, 0.7);
-        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(30, 80, 200, 0.32);
+        background: rgba(30, 80, 200, 0.16);
         font-size: 1.2rem;
         cursor: pointer;
         animation: floatPlane 2.2s ease-in-out infinite alternate;
@@ -697,7 +737,7 @@
       .modal-backdrop {
         position: fixed;
         inset: 0;
-        background: rgba(6, 78, 59, 0.08);
+        background: rgba(255, 255, 255, 0.82);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -709,8 +749,8 @@
         max-width: 520px;
         width: 100%;
         border-radius: var(--radius-lg);
-        background: #020617;
-        border: 1px solid rgba(148, 163, 184, 0.8);
+        background: #ffffff;
+        border: 1px solid rgba(148, 163, 184, 0.4);
         padding: 1.2rem 1.4rem;
         box-shadow: var(--shadow-soft);
       }

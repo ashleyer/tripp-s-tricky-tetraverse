@@ -3,9 +3,9 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
+  color-scheme: light;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  background-color: #fffefb;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -42,7 +42,7 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: #fffefb;
   cursor: pointer;
   transition: border-color 0.25s;
 }
@@ -54,9 +54,38 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+.polka-bg {
+  background-color: #fff !important;
+  background-image: radial-gradient(circle, #7ed957 0.18em, transparent 0.19em),
+    radial-gradient(circle, #7ed957 0.18em, transparent 0.19em);
+  background-size: 1.2em 1.2em;
+  background-position: 0 0, 0.6em 0.6em;
+}
+
+div.game-panel, section.game-panel, .game-panel, .game-card, .game-pill {
+  background-color: #fff !important;
+  background-image: radial-gradient(circle, #7ed957 0.18em, transparent 0.19em),
+    radial-gradient(circle, #7ed957 0.18em, transparent 0.19em);
+  background-size: 1.2em 1.2em;
+  background-position: 0 0, 0.6em 0.6em;
+}
+
+.game-card {
+  background: #fff !important;
+  background-image: none !important;
+  background-color: #fff !important;
+}
+
+.parent-button {
+  background: rgba(63, 115, 235, 0.698) !important; /* sheer blue */
+  color: #0a2250 !important; /* dark blue text */
+  border: 1px solid rgba(30, 80, 200, 0.32);
+  box-shadow: var(--shadow-subtle);
+}
+
 @media (prefers-color-scheme: light) {
   :root {
-    color: #213547;
+    color: #7db3e2;
     background-color: #ffffff;
   }
   a:hover {
