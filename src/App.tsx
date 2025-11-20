@@ -6,6 +6,8 @@ type PlayerProfile = {
   name: string;
   age: number | null;
   avatarUrl: string | null;
+  points?: number;
+  learningProfile?: Record<string, number>;
 };
 
 type GameResult = {
@@ -116,11 +118,22 @@ function playSound(key: keyof typeof soundPaths) {
 }
 
 const App: React.FC = () => {
-  const [player, setPlayer] = useState<PlayerProfile>({
-    name: "",
-    age: null,
-    avatarUrl: null,
+  const [player, setPlayer] = useState<PlayerProfile>(() => {
+    try {
+      const raw = localStorage.getItem("playerProfile");
+      if (raw) return JSON.parse(raw) as PlayerProfile;
+    } catch (e) {
+      // ignore
+    }
+    return { name: "", age: null, avatarUrl: null, points: 0, learningProfile: {} };
   });
+
+  // persist player profile locally
+  useEffect(() => {
+    try {
+      localStorage.setItem("playerProfile", JSON.stringify(player));
+    } catch (e) {}
+  }, [player]);
 
   const [selectedGame, setSelectedGame] = useState<GameId | null>(null);
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
@@ -206,34 +219,50 @@ const App: React.FC = () => {
       return "Play some games to see how you’re doing in each skill area!";
     }
 
-    const byCategory: Record<
-      string,
-      { totalScore: number; games: number }
-    > = {};
+    // Aggregate scores by category and by intelligences
+    const byCategory: Record<string, { totalScore: number; games: number }> = {};
+    const byIntelligence: Record<string, { totalScore: number; games: number }> = {};
+    const montessoriSeen = new Set<string>();
+    const waldorfSeen = new Set<string>();
+
     gameResults.forEach((result) => {
-      const category = GAME_METADATA[result.gameId].category;
-      if (!byCategory[category]) {
-        byCategory[category] = { totalScore: 0, games: 0 };
-      }
+      const meta = GAME_METADATA[result.gameId];
+      const category = meta.category;
+      if (!byCategory[category]) byCategory[category] = { totalScore: 0, games: 0 };
       byCategory[category].totalScore += result.score;
       byCategory[category].games += 1;
+
+      const ints = meta.intelligences ?? [];
+      ints.forEach((i) => {
+        if (!byIntelligence[i]) byIntelligence[i] = { totalScore: 0, games: 0 };
+        byIntelligence[i].totalScore += result.score;
+        byIntelligence[i].games += 1;
+      });
+
+      (meta.montessoriGoals ?? []).forEach((g) => montessoriSeen.add(g));
+      (meta.waldorfGoals ?? []).forEach((g) => waldorfSeen.add(g));
     });
 
-    const parts: string[] = [];
+    const lines: string[] = [];
+
     Object.entries(byCategory).forEach(([category, data]) => {
-      const avgScore = data.totalScore / Math.max(data.games, 1);
-      let comparison: string;
-      if (avgScore >= 80) {
-        comparison = "above many kids your age";
-      } else if (avgScore >= 50) {
-        comparison = "right around other kids your age";
-      } else {
-        comparison = "still warming up compared to kids your age";
-      }
-      parts.push(`${category}: You’re ${comparison}.`);
+      const avg = Math.round(data.totalScore / Math.max(1, data.games));
+      lines.push(`${category}: average ${avg}%`);
     });
 
-    return parts.join(" ");
+    Object.entries(byIntelligence).forEach(([intel, data]) => {
+      const avg = Math.round(data.totalScore / Math.max(1, data.games));
+      lines.push(`${intel}: ${avg}%`);
+    });
+
+    if (montessoriSeen.size) {
+      lines.push(`Montessori focus: ${[...montessoriSeen].slice(0,3).join(', ')}`);
+    }
+    if (waldorfSeen.size) {
+      lines.push(`Waldorf focus: ${[...waldorfSeen].slice(0,3).join(', ')}`);
+    }
+
+    return lines.join(' · ');
   }, [player.age, gameResults]);
 
   const handleAvatarUpload: React.ChangeEventHandler<HTMLInputElement> = (
@@ -1039,7 +1068,7 @@ const MemoryGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
         setMatchedIndexes((prev) => {
           const next = [...prev, a, b];
           // check finish condition using the updated array
-          if (next.length === cards.length) {
+            if (next.length === cards.length) {
             setFinished(true);
             const score = 100 - (attempts + 1 - cards.length / 2) * 10;
             onFinish(Math.max(10, score), attempts + 1);
