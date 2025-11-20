@@ -1,28 +1,41 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { playSound } from '../utils/sound';
 
 interface SimpleGameProps {
   onFinish: (score: number, attempts: number, metrics?: Record<string, number>) => void;
+  onExit?: () => void;
 }
 
-const MemoryGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
+const MemoryGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
   const initialCards = useMemo(
-    () => ["🐶", "🐶", "🦄", "🦄", "✈️", "✈️", "🧱", "🧱"],
+    () => ["🚜", "🚜", "🚛", "🚛", "🏗️", "🏗️", "🚧", "🚧"],
     []
   );
 
-  const shuffled = useMemo(
-    () => [...initialCards].sort(() => Math.random() - 0.5),
-    [initialCards]
-  );
-
-  const [cards] = useState<string[]>(shuffled);
+  const [cards, setCards] = useState<string[]>([]);
   const [flippedIndexes, setFlippedIndexes] = useState<number[]>([]);
   const [matchedIndexes, setMatchedIndexes] = useState<number[]>([]);
   const [attempts, setAttempts] = useState(0);
   const [finished, setFinished] = useState(false);
   const firstFlipTimestamp = useRef<number | null>(null);
   const holdTimes = useRef<number[]>([]);
+
+  const startNewGame = () => {
+    const shuffled = [...initialCards].sort(() => Math.random() - 0.5);
+    setCards(shuffled);
+    setFlippedIndexes([]);
+    setMatchedIndexes([]);
+    setAttempts(0);
+    setFinished(false);
+    firstFlipTimestamp.current = null;
+    holdTimes.current = [];
+    playSound('click');
+  };
+
+  // Initialize game
+  useEffect(() => {
+    startNewGame();
+  }, [initialCards]);
 
   const handleCardClick = (index: number) => {
     if (finished) return;
@@ -97,9 +110,27 @@ const MemoryGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
       </div>
       <p className="game-meta-small">Attempts: {attempts}</p>
       {finished && (
-        <p className="game-success-message">
-          Great job! You matched all the cards!
-        </p>
+        <div className="game-success-message" style={{ textAlign: 'center', marginTop: '1rem' }}>
+          <p style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
+            Great job! You matched all the cards!
+          </p>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+            <button 
+              className="primary-button interactive-hover" 
+              onClick={startNewGame}
+            >
+              Play Again 🔄
+            </button>
+            {onExit && (
+              <button 
+                className="secondary-button interactive-hover" 
+                onClick={onExit}
+              >
+                Back to Menu 🏠
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

@@ -66,23 +66,23 @@ const GAME_METADATA: Record<
   }
 > = {
   memory: {
-    name: "Match the Pairs",
-    tagline: "Flip the cards and find the twins!",
+    name: "Truck Match",
+    tagline: "Find the matching trucks and tools!",
     skills: ["Memory", "Focus", "Pattern spotting"],
     difficulty: "Medium",
     category: "Memory",
-    emoji: "🃏",
+    emoji: "🚜",
     montessoriGoals: ["Concentration", "Order", "Refined visual discrimination"],
     waldorfGoals: ["Imagination with visual motifs", "Rhythmic practice"],
     intelligences: ["Visual-Spatial", "Logical-Mathematical"],
   },
   digging: {
-    name: "Treasure Dig",
-    tagline: "Tap to dig and find the hidden gem!",
-    skills: ["Patience", "Guessing", "Basic strategy"],
+    name: "Looking for Long Shorty's Loot",
+    tagline: "Dig up the pirate treasure!",
+    skills: ["Patience", "Guessing", "Pirate Luck"],
     difficulty: "Easy",
     category: "Problem Solving",
-    emoji: "💎",
+    emoji: "🏴‍☠️",
     montessoriGoals: ["Sensorial exploration", "Cause & effect"],
     waldorfGoals: ["Nature play", "Story-based discovery"],
     intelligences: ["Bodily-Kinesthetic", "Naturalist"],
@@ -117,7 +117,6 @@ const MUSIC_TRACKS: { key: string; label: string; emoji: string; path: string }[
   { key: "tides", label: "Tides", emoji: "🌊", path: `${_BASE}sounds/tides-and-smiles.mp3` },
   { key: "happy", label: "Happy", emoji: "☀️", path: `${_BASE}sounds/happy-day.mp3` },
   { key: "playful", label: "Playful", emoji: "🎈", path: `${_BASE}sounds/playful.mp3` },
-  { key: "chill", label: "Chill", emoji: "🌴", path: `${_BASE}sounds/chill-pulse.mp3` },
   { key: "love", label: "Love", emoji: "💖", path: `${_BASE}sounds/love-in-japan.mp3` },
 ];
 
@@ -1007,6 +1006,7 @@ const GameView: React.FC<GameViewProps> = ({
 
           {gameId === "memory" && (
             <MemoryGame
+              onExit={onBackToArcade}
               onFinish={(score, attempts, metrics) =>
                 onGameResult(
                   "memory",
@@ -1024,6 +1024,7 @@ const GameView: React.FC<GameViewProps> = ({
           )}
           {gameId === "digging" && (
             <DiggingGame
+              onExit={onBackToArcade}
               onFinish={(score, attempts, metrics) =>
                 onGameResult(
                   "digging",
@@ -1041,6 +1042,7 @@ const GameView: React.FC<GameViewProps> = ({
           )}
           {gameId === "boots" && (
             <BootsGame
+              onExit={onBackToArcade}
               onFinish={(score, attempts, metrics) =>
                 onGameResult(
                   "boots",
@@ -1058,6 +1060,7 @@ const GameView: React.FC<GameViewProps> = ({
           )}
           {gameId === "airplanes" && (
             <AirplanesGame
+              onExit={onBackToArcade}
               onFinish={(score, attempts, metrics) =>
                 onGameResult(
                   "airplanes",
@@ -1174,7 +1177,7 @@ interface IntroBannerProps {
 
 const IntroBanner: React.FC<IntroBannerProps> = ({ onBegin }) => {
   const slides = [
-    { emoji: '🧠', title: 'Match the Pairs' },
+    { emoji: '🚜', title: 'Truck Match' },
     { emoji: '💎', title: 'Treasure Dig' },
     { emoji: '👢', title: 'Isabelle\'s Boots' },
     { emoji: '✈️', title: 'Airplane Catch' },
@@ -1226,15 +1229,15 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ gameId, onClose }) => {
       body = (
         <>
           <p>Flip two cards at a time. If they match, they stay face up.</p>
-          <p>Try to remember where the pictures are and match all pairs.</p>
+          <p>Try to remember where the trucks and tools are!</p>
         </>
       );
       break;
     case "digging":
       body = (
         <>
-          <p>Tap a square to dig. One square hides a treasure.</p>
-          <p>Keep digging until you find the gem!</p>
+          <p>Tap a spot marked with X to dig.</p>
+          <p>Find Long Shorty's hidden loot!</p>
         </>
       );
       break;

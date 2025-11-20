@@ -4,6 +4,7 @@ import { createConfetti } from '../utils/confetti';
 
 interface SimpleGameProps {
   onFinish: (score: number, attempts: number, metrics?: Record<string, number>) => void;
+  onExit?: () => void;
 }
 
 type PlaneState = {
@@ -14,7 +15,7 @@ type PlaneState = {
   delay: number; // seconds
 };
 
-const AirplanesGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
+const AirplanesGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
   const TOTAL_PLANES = 6;
   const makePlanes = (): PlaneState[] =>
     Array.from({ length: TOTAL_PLANES }, (_, i) => ({
@@ -25,11 +26,23 @@ const AirplanesGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
       delay: Math.round(Math.random() * 300) / 100, // up to 3s
     }));
 
-  const [planes, setPlanes] = useState<PlaneState[]>(makePlanes);
+  const [planes, setPlanes] = useState<PlaneState[]>([]);
   const [caughtCount, setCaughtCount] = useState(0);
   const [clicks, setClicks] = useState(0);
   const [finished, setFinished] = useState(false);
   const areaRef = useRef<HTMLDivElement | null>(null);
+
+  const startNewGame = () => {
+    setPlanes(makePlanes());
+    setCaughtCount(0);
+    setClicks(0);
+    setFinished(false);
+    playSound('click');
+  };
+
+  useEffect(() => {
+    startNewGame();
+  }, []);
 
   const handlePlaneClick = (id: number) => {
     if (finished) return;
@@ -54,20 +67,6 @@ const AirplanesGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
       return next;
     });
   };
-
-  // allow restart if wanted: when finished, repopulate after a short delay
-  useEffect(() => {
-    if (!finished) return;
-    const t = setTimeout(() => {
-      // reset for a fresh round without forcing the user back
-      setPlanes(makePlanes);
-      setCaughtCount(0);
-      setClicks(0);
-      setFinished(false);
-    }, 3000);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [finished]);
 
   return (
     <div className="game-panel">
@@ -102,9 +101,27 @@ const AirplanesGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
         Caught: {caughtCount} / {TOTAL_PLANES}
       </p>
       {finished && (
-        <p className="game-success-message">
-          All planes landed safely. Great reflexes!
-        </p>
+        <div className="game-success-message" style={{ textAlign: 'center', marginTop: '1rem' }}>
+          <p style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
+            All planes landed safely. Great reflexes!
+          </p>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+            <button 
+              className="primary-button interactive-hover" 
+              onClick={startNewGame}
+            >
+              Play Again 🔄
+            </button>
+            {onExit && (
+              <button 
+                className="secondary-button interactive-hover" 
+                onClick={onExit}
+              >
+                Back to Menu 🏠
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

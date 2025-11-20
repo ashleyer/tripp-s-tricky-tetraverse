@@ -1,17 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { playSound } from '../utils/sound';
 
 interface SimpleGameProps {
   onFinish: (score: number, attempts: number, metrics?: Record<string, number>) => void;
+  onExit?: () => void;
 }
 
-const DiggingGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
+const DiggingGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
   const cells = Array.from({ length: 9 }, (_, i) => i);
-  const [treasureIndex] = useState<number>(
-    () => Math.floor(Math.random() * cells.length)
-  );
+  const [treasureIndex, setTreasureIndex] = useState<number>(0);
   const [dug, setDug] = useState<number[]>([]);
   const [found, setFound] = useState(false);
+
+  const startNewGame = () => {
+    setTreasureIndex(Math.floor(Math.random() * cells.length));
+    setDug([]);
+    setFound(false);
+    playSound('click');
+  };
+
+  useEffect(() => {
+    startNewGame();
+  }, []);
 
   const handleDig = (index: number) => {
     if (found || dug.includes(index)) return;
@@ -33,8 +43,8 @@ const DiggingGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
   return (
     <div className="game-panel">
       <p className="game-instructions">
-        Tap a square to dig. Somewhere in this little yard is a hidden
-        treasure. Can you find it?
+        Tap a spot marked with X to dig. Somewhere in this sandy island is Long Shorty's
+        hidden loot. Can you find it?
       </p>
       <div className="dig-grid" role="grid" aria-label="Digging squares">
         {cells.map((cell) => {
@@ -57,16 +67,34 @@ const DiggingGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
               }
             >
               <span aria-hidden="true">
-                {isTreasure ? "💎" : isDug ? "🕳" : "🟫"}
+                {isTreasure ? "💰" : isDug ? "🕳️" : "❌"}
               </span>
             </button>
           );
         })}
       </div>
       {found && (
-        <p className="game-success-message">
-          You found the treasure! Nice digging!
-        </p>
+        <div className="game-success-message" style={{ textAlign: 'center', marginTop: '1rem' }}>
+          <p style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
+            You found the loot! Nice digging, matey!
+          </p>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+            <button 
+              className="primary-button interactive-hover" 
+              onClick={startNewGame}
+            >
+              Play Again 🔄
+            </button>
+            {onExit && (
+              <button 
+                className="secondary-button interactive-hover" 
+                onClick={onExit}
+              >
+                Back to Menu 🏠
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

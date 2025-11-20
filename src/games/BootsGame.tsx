@@ -1,19 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { playSound } from '../utils/sound';
 
 interface SimpleGameProps {
   onFinish: (score: number, attempts: number, metrics?: Record<string, number>) => void;
+  onExit?: () => void;
 }
 
-const BootsGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
+const BootsGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
   const COLORS = ["🟡", "🟢", "🟣", "🔴"];
-  const [targetColor] = useState(() => COLORS[Math.floor(Math.random() * 4)]);
-  const [choices] = useState(() =>
-    Array.from({ length: 6 }, () => COLORS[Math.floor(Math.random() * 4)])
-  );
+  const [targetColor, setTargetColor] = useState("");
+  const [choices, setChoices] = useState<string[]>([]);
   const [clickedIndex, setClickedIndex] = useState<number | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [finished, setFinished] = useState(false);
+
+  const startNewGame = () => {
+    setTargetColor(COLORS[Math.floor(Math.random() * 4)]);
+    setChoices(Array.from({ length: 6 }, () => COLORS[Math.floor(Math.random() * 4)]));
+    setClickedIndex(null);
+    setAttempts(0);
+    setFinished(false);
+    playSound('click');
+  };
+
+  useEffect(() => {
+    startNewGame();
+  }, []);
 
   const handleBootClick = (index: number) => {
     if (finished) return;
@@ -62,9 +74,27 @@ const BootsGame: React.FC<SimpleGameProps> = ({ onFinish }) => {
       </div>
       <p className="game-meta-small">Guesses: {attempts}</p>
       {finished && (
-        <p className="game-success-message">
-          Isabelle loves your style. You picked the right boots!
-        </p>
+        <div className="game-success-message" style={{ textAlign: 'center', marginTop: '1rem' }}>
+          <p style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
+            Isabelle loves your style. You picked the right boots!
+          </p>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+            <button 
+              className="primary-button interactive-hover" 
+              onClick={startNewGame}
+            >
+              Play Again 🔄
+            </button>
+            {onExit && (
+              <button 
+                className="secondary-button interactive-hover" 
+                onClick={onExit}
+              >
+                Back to Menu 🏠
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
