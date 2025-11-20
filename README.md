@@ -230,11 +230,13 @@ When publishing, ensure licensing and attribution requirements from each source 
 
 If you want help implementing any of the above or running experiments with anonymized, opt-in telemetry for research, open an issue or reach out.
 
-Contact & Contributing
+## Contact & Contributing
+
+If you'd like direct help, open an issue on the repo above or send a short note!
 
 - **GitHub:** [https://github.com/ashleyer](https://github.com/ashleyer)
 - **Email:** [ashleye.romano@gmail.com](mailto:ashleye.romano@gmail.com)
 
-If you'd like direct help, open an issue on the repo above or send a short note to the email address.
+---
 
-## Built with ❤️ in Boston by [@ashleyer](https://github.com/ashleyer)
+## Built with ❤️ in Boston by AER

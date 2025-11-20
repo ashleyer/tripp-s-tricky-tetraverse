@@ -1721,6 +1721,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ gameId, onClose }) => {
             Skip
           </button>
         </div>
+        <FooterBrand />
       </div>
     </div>
   );
@@ -1740,6 +1741,18 @@ const PlayersOverlay: React.FC<PlayersOverlayProps> = ({ player, onClose, onSave
       <div className="modal-content">
         <h2>Player Profile</h2>
         <p style={{fontSize:'0.95rem'}}>Points: <strong>{local.points ?? 0}</strong></p>
+        <div style={{marginTop:8}}>
+          <strong>Inventory:</strong>
+          <div style={{marginTop:6}}>
+            {(local.inventory && local.inventory.length) ? (
+              <ul>
+                {local.inventory.map((it, i) => <li key={i}>{it}</li>)}
+              </ul>
+            ) : (
+              <div style={{color:'var(--text-muted)'}}>No redeemed items yet.</div>
+            )}
+          </div>
+        </div>
         <label className="form-label">
           Name
           <input
@@ -1780,6 +1793,7 @@ const PlayersOverlay: React.FC<PlayersOverlayProps> = ({ player, onClose, onSave
             Prize Shop
           </button>
         </div>
+        <FooterBrand />
       </div>
     </div>
   );
@@ -1810,6 +1824,7 @@ const AboutOverlay: React.FC<AboutOverlayProps> = ({ onClose }) => {
             Close
           </button>
         </div>
+        <FooterBrand />
       </div>
     </div>
   );
@@ -1826,25 +1841,121 @@ const ParentalReport: React.FC<ParentalReportProps> = ({ player, gameResults, on
   const totals = player.learningProfile || {};
   const entries = Object.entries(totals).sort((a,b)=> b[1]-a[1]);
 
+  // use persisted per-player results when available
+  const allResults = (player.gameResults && player.gameResults.length) ? player.gameResults : gameResults;
+
+  const today = new Date();
+  const defaultFrom = new Date(today.getTime() - 1000 * 60 * 60 * 24 * 30);
+  const [fromDate, setFromDate] = useState<string>(defaultFrom.toISOString().slice(0,10));
+  const [toDate, setToDate] = useState<string>(today.toISOString().slice(0,10));
+
+  const parseDay = (ts: number) => {
+    const d = new Date(ts);
+    return d.toISOString().slice(0,10);
+  };
+
+  const filteredResults = allResults.filter(r => {
+    const day = parseDay(r.timestamp);
+    return day >= fromDate && day <= toDate;
+  });
+
+  // aggregate plays per day and points per day from player's pointsHistory
+  const playsByDay: Record<string, number> = {};
+  filteredResults.forEach(r => {
+    const day = parseDay(r.timestamp);
+    playsByDay[day] = (playsByDay[day] || 0) + 1;
+  });
+
+  const pointsHistory = player.pointsHistory ?? [];
+  const pointsInRange = pointsHistory.filter(p => {
+    const day = parseDay(p.timestamp);
+    return day >= fromDate && day <= toDate;
+  });
+
+  // convert to arrays sorted by day (not used directly here)
+
+  const totalPlays = filteredResults.length;
+
+  const sparklinePoints = pointsInRange.map(p => p.delta);
+
+  // export helpers
+  const exportSVG = (id: string, name: string) => {
+    const node = document.getElementById(id) as SVGSVGElement | null;
+    if (!node) return;
+    const svgData = new XMLSerializer().serializeToString(node);
+    const blob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${name}.svg`; a.click(); URL.revokeObjectURL(url);
+  };
+
+  const exportPNG = async (id: string, name: string) => {
+    const node = document.getElementById(id) as SVGSVGElement | null;
+    if (!node) return;
+    const svgData = new XMLSerializer().serializeToString(node);
+    const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width; canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img,0,0);
+      const png = canvas.toDataURL('image/png');
+      const a = document.createElement('a'); a.href = png; a.download = `${name}.png`; a.click();
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  };
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <div className="modal-content">
         <h2>Parental Report — {player.name || 'Player'}</h2>
         <p style={{fontSize:'0.95rem'}}>Points: <strong>{player.points ?? 0}</strong></p>
-        <h3>Top practiced skills</h3>
+
+        <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:8}}>
+          <label style={{fontSize:'0.9rem'}}>From <input type="date" value={fromDate} onChange={(e)=>setFromDate(e.target.value)} /></label>
+          <label style={{fontSize:'0.9rem'}}>To <input type="date" value={toDate} onChange={(e)=>setToDate(e.target.value)} /></label>
+          <div style={{marginLeft:'auto',fontSize:'0.9rem',color:'var(--text-muted)'}}>Plays: {totalPlays}</div>
+        </div>
+
+        <h3>Points Timeline</h3>
+        <div style={{display:'flex',gap:12,alignItems:'center'}}>
+          <svg id="points-spark" width="260" height="60" viewBox={`0 0 ${Math.max(260, sparklinePoints.length*20)} 60`} style={{background:'rgba(255,255,255,0.02)',borderRadius:8}}>
+            {(() => {
+              if (sparklinePoints.length === 0) return null;
+              const max = Math.max(...sparklinePoints.map(Math.abs)) || 1;
+              const points = sparklinePoints.map((v,i) => {
+                const x = i * 20 + 10; const y = 30 - (v / max) * 24;
+                return `${x},${y}`;
+              }).join(' ');
+              return <polyline fill="none" stroke="#2d6a4f" strokeWidth={2} points={points} />;
+            })()}
+          </svg>
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            <button className="secondary-button" onClick={()=>exportSVG('points-spark', `${player.name||'player'}-points`)}>Export SVG</button>
+            <button className="secondary-button" onClick={()=>exportPNG('points-spark', `${player.name||'player'}-points`)}>Export PNG</button>
+          </div>
+        </div>
+
+        <h3 style={{marginTop:12}}>Top practiced skills</h3>
         <ul>
           {entries.slice(0,6).map(([k,v]) => (
             <li key={k}>{k}: {Math.round(v)}</li>
           ))}
         </ul>
+
         <p style={{fontSize:'0.9rem',color:'var(--text-muted)'}}>
           This is a local, lightweight summary. For richer exportable reports, emotion tracking, or AI-driven suggestions, see the README (planned features).
         </p>
+
         <div style={{display:'flex',gap:8,marginTop:12}}>
           <button className="primary-button" onClick={onClose}>Close</button>
           <button className="secondary-button" onClick={() => {
-            // placeholder: export as JSON
-            const blob = new Blob([JSON.stringify({player, gameResults}, null, 2)], {type:'application/json'});
+            const blob = new Blob([JSON.stringify({player, gameResults: allResults}, null, 2)], {type:'application/json'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url; a.download = `${player.name||'player'}-report.json`;
@@ -1852,6 +1963,7 @@ const ParentalReport: React.FC<ParentalReportProps> = ({ player, gameResults, on
             URL.revokeObjectURL(url);
           }}>Export JSON</button>
         </div>
+        <FooterBrand />
       </div>
     </div>
   );
@@ -1888,6 +2000,19 @@ const PrizeShop: React.FC<PrizeShopProps> = ({ player, onClose, onRedeem }) => {
         <div style={{display:'flex',gap:8,marginTop:12}}>
           <button className="secondary-button" onClick={onClose}>Close</button>
         </div>
+        <div style={{marginTop:12}}>
+          <strong>Inventory</strong>
+          <div style={{marginTop:6}}>
+            {(player.inventory && player.inventory.length) ? (
+              <ul>
+                {player.inventory.map((it, i) => <li key={i}>{it}</li>)}
+              </ul>
+            ) : (
+              <div style={{color:'var(--text-muted)'}}>No redeemed items yet.</div>
+            )}
+          </div>
+        </div>
+        <FooterBrand />
       </div>
     </div>
   );
