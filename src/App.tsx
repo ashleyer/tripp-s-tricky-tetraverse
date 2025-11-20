@@ -523,16 +523,11 @@ const App: React.FC = () => {
 
       <header className="app-header" aria-label="Tripp's Tricky Tetraverse">
         <div className="header-main">
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span className="app-title-emoji" aria-hidden style={{fontSize:'2.6rem',marginRight:8}}>
-              🐨
-            </span>
-            <div>
-              <h1 className="app-title design-title" aria-label="Tripp's Tricky Tetraverse">
-                Tripp's Tricky Tetraverse
-              </h1>
-              <p className="app-subtitle design-subtitle">an all for you arcade</p>
-            </div>
+          <div className="header-text-block">
+            <h1 className="app-title design-title" aria-label="Tripp's Tricky Tetraverse">
+              Tripp's Tricky Tetraverse
+            </h1>
+            <p className="app-subtitle design-subtitle">an all for you arcade</p>
           </div>
         </div>
       </header>

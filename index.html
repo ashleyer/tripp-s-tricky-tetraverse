@@ -66,19 +66,49 @@
       }
 
       .app-header {
+        color-scheme: light;
+        --bg: #fff7f0;
+        --bg-soft: #fff1e6;
+        --card-bg: #ffffff;
+        --card-border: rgba(255, 148, 114, 0.18);
+        --accent: #ff7a8a;
+        --accent-soft: rgba(255, 122, 138, 0.12);
+        --accent-strong: #ff4d6d;
+        --text-main: #12263a;
+        --text-muted: #425261;
+        --danger: #ff6b6b;
+        --radius-lg: 18px;
+        --radius-sm: 12px;
+        --shadow-soft: 0 18px 40px rgba(18, 38, 58, 0.06);
+        --shadow-subtle: 0 8px 20px rgba(18, 38, 58, 0.05);
+        --brand-darkgreen: #0b5b35;
+        font-family: "Comic Sans MS", "Trebuchet MS", system-ui, -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--text-main);
+        box-sizing: border-box;
         display: flex;
-        justify-content: space-between;
+        justify-content: center;
         align-items: center;
-        gap: 1rem;
-        padding: 1rem 1.2rem;
-        border-radius: var(--radius-lg);
-        border: 1px solid var(--card-border);
-        background: linear-gradient(180deg, var(--bg), var(--bg-soft));
-        box-shadow: var(--shadow-soft);
+        flex-direction: column;
+        text-align: center;
+        gap: 0.35rem;
+        margin: 1.2rem 0 0.4rem 0;
+        padding: 0.8rem 1rem;
+        border-radius: 18px;
+        border: 1px solid rgba(30, 80, 200, 0.24);
+        background: rgba(255, 255, 255, 0.85);
+        box-shadow: 0 8px 22px rgba(30, 80, 200, 0.12);
       }
 
       .header-main {
-        max-width: 80%;
+        max-width: 100%;
+      }
+
+      .header-text-block {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        text-align: center;
       }
 
       .app-title {
@@ -96,10 +126,25 @@
         font-weight: 600;
       }
 
-      /* Emoji-friendly large heading */
-      .app-title-emoji {
-        font-size: 1.4rem;
-        margin-right: 0.4rem;
+      .design-title {
+        color: #0b2955;
+        text-shadow: 0 2px 10px rgba(11, 41, 85, 0.12), 0 1px 0 #fff;
+        animation: headerTitleGlow 3.6s ease-in-out infinite;
+      }
+
+      @keyframes headerTitleGlow {
+        0% {
+          text-shadow: 0 2px 10px rgba(11, 41, 85, 0.12), 0 1px 0 #fff;
+          transform: translateY(0);
+        }
+        50% {
+          text-shadow: 0 4px 18px rgba(11, 41, 85, 0.26), 0 1px 0 #fff;
+          transform: translateY(-1px);
+        }
+        100% {
+          text-shadow: 0 2px 10px rgba(11, 41, 85, 0.12), 0 1px 0 #fff;
+          transform: translateY(0);
+        }
       }
 
       .header-right {
@@ -111,7 +156,7 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        margin: 1.6rem 0 1.2rem 0;
+        margin: 0.4rem 0 1.2rem 0;
         padding: 0.8rem 1rem;
         border-radius: 18px;
         border: 1px solid rgba(30, 80, 200, 0.24);
@@ -228,8 +273,7 @@
 
       @media (max-width: 768px) {
         .app-header {
-          flex-direction: column;
-          align-items: flex-start;
+          align-items: center;
         }
 
         .header-main {
