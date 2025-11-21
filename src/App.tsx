@@ -686,7 +686,7 @@ function App() {
 
           {/* Player Profile & Points Section */}
           <section className="profile-section" id="tour-profile" aria-label="Current Player">
-            {!player.name && !showWelcomeBack ? (
+            {!player.name ? (
               <div className="profile-setup" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '10px' }}>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)' }}>Who is playing?</h3>
                 <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '320px' }}>
@@ -711,14 +711,13 @@ function App() {
                   onClick={() => {
                     setPlayer(p => ({ ...p, name: tempName, age: tempAge ? parseInt(tempAge) : null }));
                     playSound('success');
-                    setShowTour(true); // Start tour for new players
                   }}
                   style={{ width: '100%', maxWidth: '320px', justifyContent: 'center' }}
                 >
                   Let's Play!
                 </button>
               </div>
-            ) : player.name ? (
+            ) : (
               <>
                 <div
                   className="profile-card interactive-hover"
@@ -766,7 +765,7 @@ function App() {
                   </button>
                 </div>
               </>
-            ) : null}
+            )}
           </section>
 
           {/* Music Choice Section */}
