@@ -112,6 +112,24 @@ const GAME_METADATA: Record<
   },
 };
 
+const MONTESSORI_FOCUS = Array.from(
+  new Set(
+    Object.values(GAME_METADATA).flatMap((meta) => meta.montessoriGoals ?? [])
+  )
+);
+
+const WALDORF_FOCUS = Array.from(
+  new Set(
+    Object.values(GAME_METADATA).flatMap((meta) => meta.waldorfGoals ?? [])
+  )
+);
+
+const GAME_SKILL_SUMMARY = Object.values(GAME_METADATA).map((meta) => ({
+  name: meta.name,
+  category: meta.category,
+  skills: meta.skills.slice(0, 3),
+}));
+
 // Background music choices. Use the app `public/sounds/` folder for bundled tracks.
 const MUSIC_TRACKS: { key: string; label: string; emoji: string; path: string }[] = [
   { key: "silent", label: "Silent", emoji: "🔇", path: "" },
@@ -174,7 +192,7 @@ interface WelcomeBackModalProps {
 const WelcomeBackModal: React.FC<WelcomeBackModalProps> = ({ playerName, onPlay, onTour, onSwitch }) => {
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal-content" style={{textAlign: 'center', maxWidth: '400px'}}>
+      <div className="modal-content" style={{ textAlign: 'center', maxWidth: 440 }}>
         <h2>Welcome Back, {playerName}!</h2>
         <div style={{fontSize: '4rem', margin: '20px 0'}}>👋</div>
         <div style={{display: 'flex', flexDirection: 'column', gap: '12px', margin: '0 auto'}}>
@@ -583,7 +601,13 @@ function App() {
     return Math.max(sessionBest, profileBest);
   }, [selectedGame, gameResults, player.gameResults]);
 
-  const displayProfile = player.name ? player : lastPlayer;
+  const summaryProfile = player.name ? player : lastPlayer;
+  const summaryLabel = player.name
+    ? 'Active player'
+    : summaryProfile?.name
+      ? 'Last player on this device'
+      : 'Active player';
+  const hasActivePlayer = Boolean(player.name);
 
   const screenTimeMessage = useMemo(() => {
     if (!screenTime.limitMinutes) return "Screen time: No limit set";
@@ -645,6 +669,14 @@ function App() {
     setShowProfilePrompt(false);
     handleCreateNewPlayer();
   }, [handleCreateNewPlayer]);
+
+  const handleLoadLastPlayer = useCallback(() => {
+    if (!lastPlayer?.name) return;
+    setPlayer(hydratePlayer(lastPlayer));
+    setShowCreateForm(false);
+    setPendingAvatarData(null);
+    playSound('success');
+  }, [lastPlayer]);
 
   const requestAvatarUpload = useCallback((context: 'current' | 'new') => {
     setAvatarUploadContext(context);
@@ -919,28 +951,35 @@ function App() {
           <section className="profile-section" id="tour-profile" aria-label="Current Player">
             <div className="profile-summary-card">
               <div className="profile-summary-main">
-                <div className="avatar-preview-box profile-summary-avatar" aria-hidden={!displayProfile?.avatarUrl}>
-                  {displayProfile?.avatarUrl ? (
-                    displayProfile.avatarUrl.startsWith("preloaded:") ? (
+                <div className="avatar-preview-box profile-summary-avatar" aria-hidden={!summaryProfile?.avatarUrl}>
+                  {summaryProfile?.avatarUrl ? (
+                    summaryProfile.avatarUrl.startsWith("preloaded:") ? (
                       <span style={{ fontSize: '2.4rem' }}>
-                        {PRELOADED_AVATARS.find((a) => `preloaded:${a.id}` === displayProfile.avatarUrl)?.emoji}
+                        {PRELOADED_AVATARS.find((a) => `preloaded:${a.id}` === summaryProfile.avatarUrl)?.emoji}
                       </span>
                     ) : (
-                      <img src={displayProfile.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                      <img src={summaryProfile.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
                     )
                   ) : (
                     <span style={{ fontSize: '2.2rem' }}>🙂</span>
                   )}
                 </div>
                 <div>
-                  <p className="profile-summary-label">Active player</p>
-                  <h2 className="profile-summary-name">{displayProfile?.name || 'No player selected'}</h2>
-                  <p className="profile-summary-points">
-                    {displayProfile?.points ?? 0} <span>pts</span>
-                  </p>
-                  <p className="profile-summary-age">
-                    {displayProfile?.age ? `${displayProfile.age} years old` : 'Load a saved profile or create a new one below.'}
-                  </p>
+                  <p className="profile-summary-label">{summaryLabel}</p>
+                  <h2 className="profile-summary-name">{summaryProfile?.name || 'No player selected'}</h2>
+                  <div className="profile-summary-chips">
+                    <span className="profile-chip">{summaryProfile?.points ?? 0} pts earned</span>
+                    {summaryProfile?.age && (
+                      <span className="profile-chip">{summaryProfile.age} yrs</span>
+                    )}
+                  </div>
+                  {!hasActivePlayer && (
+                    <p className="profile-empty-hint">
+                      {lastPlayer?.name
+                        ? `Tap "Load ${lastPlayer.name}" below or create a new profile to start tracking progress.`
+                        : 'Create a player profile to start saving points and skill notes.'}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="profile-summary-meta">
@@ -966,17 +1005,25 @@ function App() {
               <button
                 className="ghost-button interactive-hover"
                 type="button"
+                onClick={handleLoadLastPlayer}
+                disabled={!lastPlayer?.name}
+              >
+                {lastPlayer?.name ? `Load ${lastPlayer.name}` : 'No saved player'}
+              </button>
+              <button
+                className="ghost-button interactive-hover"
+                type="button"
                 onClick={() => requestAvatarUpload('current')}
-                disabled={!player.name}
+                disabled={!hasActivePlayer}
               >
                 Upload Photo
               </button>
               <button
                 className="primary-button interactive-hover"
                 type="button"
-                onClick={handleCreateNewPlayer}
+                onClick={showCreateForm ? handleCancelCreate : handleCreateNewPlayer}
               >
-                {showCreateForm ? 'Start Fresh' : 'Create New Player'}
+                {showCreateForm ? 'Hide Create Form' : 'Create New Player'}
               </button>
             </div>
 
@@ -1205,10 +1252,7 @@ function App() {
             if (window.confirm("Are you sure you want to switch players? This will sign you out.")) {
                setPlayer(createEmptyPlayer());
                setShowPlayersOverlay(false);
-               setShowCreateForm(true);
-               setTempName("");
-               setTempAge("");
-               setPendingAvatarData(null);
+               handleCreateNewPlayer();
             }
           }}
         />
@@ -1225,10 +1269,7 @@ function App() {
           onSwitch={() => {
             setShowWelcomeBack(false);
             setPlayer(createEmptyPlayer());
-            setShowCreateForm(true);
-            setTempName("");
-            setTempAge("");
-            setPendingAvatarData(null);
+            handleCreateNewPlayer();
           }}
         />
       )}
@@ -1252,6 +1293,7 @@ function App() {
           player={player} 
           onClose={() => setShowSkillsOverlay(false)} 
           performanceSummary={performanceSummary}
+          onOpenReport={() => setShowParentalReport(true)}
         />
       )}
 
@@ -1628,6 +1670,20 @@ const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport, sc
           This little arcade was designed to be <strong>gentle, low-pressure, and kid-friendly</strong>.
           There are no ads, no in-app purchases, and no hidden chats. Everything runs locally in your child’s browser.
         </p>
+        <div style={{background:'rgba(255,255,255,0.7)', border:'1px dashed #4cc9f0', borderRadius:'14px', padding:'12px 14px', marginBottom:'1rem'}}>
+          <h3 style={{marginTop:0}}>What are they practicing?</h3>
+          <p style={{fontSize:'0.95rem', marginBottom:'0.6rem'}}>
+            Games weave in Montessori elements ({MONTESSORI_FOCUS.slice(0,3).join(', ')}) and Waldorf vibes ({WALDORF_FOCUS.slice(0,3).join(', ')}), keeping play rooted in imagination, order, and movement.
+          </p>
+          <ul style={{paddingLeft:'1.2rem', margin:'0'}}>
+            {GAME_SKILL_SUMMARY.map((game) => (
+              <li key={game.name} style={{marginBottom:'0.4rem'}}>
+                <strong>{game.name}</strong>: {game.skills.join(', ')}
+              </li>
+            ))}
+          </ul>
+          <p style={{fontSize:'0.85rem', color:'var(--text-muted)', marginTop:'0.6rem'}}>Skill snapshots are playful heuristics only—use them as conversation starters, not assessments.</p>
+        </div>
         
         <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button type="button" className="secondary-button" onClick={() => setShowDetails((s) => !s)} aria-expanded={showDetails}>
@@ -1921,6 +1977,21 @@ const AboutOverlay: React.FC<AboutOverlayProps> = ({ onClose }) => {
           progress notes that never leave the browser. The games are short
           and non-competitive — great for little hands and growing minds.
         </p>
+        <div style={{background:'rgba(11,61,145,0.08)', padding:'12px 16px', borderRadius:'14px', margin:'14px 0'}}>
+          <h3 style={{marginTop:0}}>Learning focus</h3>
+          <p style={{marginBottom:'0.5rem'}}>
+            Each game nods to Montessori practices like {MONTESSORI_FOCUS.slice(0,4).join(', ')} and Waldorf themes such as {WALDORF_FOCUS.slice(0,4).join(', ')}.
+            Skills stay playful, never prescriptive.
+          </p>
+          <ul style={{paddingLeft:'1.2rem', margin:'0 0 0.6rem 0'}}>
+            {GAME_SKILL_SUMMARY.map((game) => (
+              <li key={game.name}>
+                <strong>{game.name}</strong> ({game.category}) — {game.skills.join(', ')}
+              </li>
+            ))}
+          </ul>
+          <p style={{margin:0, fontSize:'0.9rem', color:'var(--text-muted)'}}>All tracking remains on this browser; exporting or sharing is optional and parent-led.</p>
+        </div>
         <p style={{ marginTop: '1rem', fontSize: '0.98rem' }}>
           <a
             href="https://github.com/ashleyer/tripp-s-tricky-tetraverse"
@@ -2402,9 +2473,10 @@ interface SkillsOverlayProps {
   player: PlayerProfile;
   onClose: () => void;
   performanceSummary: string;
+  onOpenReport?: () => void;
 }
 
-const SkillsOverlay: React.FC<SkillsOverlayProps> = ({ player, onClose, performanceSummary }) => {
+const SkillsOverlay: React.FC<SkillsOverlayProps> = ({ player, onClose, performanceSummary, onOpenReport }) => {
   const profile = player.learningProfile || {};
   const maxScore = Math.max(...Object.values(profile), 100);
 
@@ -2439,7 +2511,20 @@ const SkillsOverlay: React.FC<SkillsOverlayProps> = ({ player, onClose, performa
           <strong>Coach's Note:</strong> {performanceSummary}
         </div>
 
-        <div style={{marginTop:20, display:'flex', justifyContent:'center'}}>
+        <div style={{marginTop:16, display:'flex', justifyContent:'center'}}>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              onClose();
+              onOpenReport?.();
+            }}
+          >
+            Generate Parental Report
+          </button>
+        </div>
+
+        <div style={{marginTop:12, display:'flex', justifyContent:'center'}}>
           <button className="primary-button interactive-hover" onClick={onClose}>Awesome!</button>
         </div>
         <FooterBrand />
@@ -2489,30 +2574,37 @@ const TourOverlay: React.FC<TourOverlayProps> = ({ onClose, onSkip, onStepChange
   }, [onStepChange]);
 
   useEffect(() => {
+    let raf: number | null = null;
+    let cancelled = false;
+
     const updateRect = () => {
       const el = document.getElementById(currentStep.id);
       if (el) {
         setTargetRect(el.getBoundingClientRect());
+      }
+    };
+
+    const attemptFind = (tries = 0) => {
+      if (cancelled) return;
+      const el = document.getElementById(currentStep.id);
+      if (el) {
+        setTargetRect(el.getBoundingClientRect());
+        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      } else if (tries < 10) {
+        raf = requestAnimationFrame(() => attemptFind(tries + 1));
       } else {
         setTargetRect(null);
       }
     };
 
-    const raf = requestAnimationFrame(() => {
-      const el = document.getElementById(currentStep.id);
-      if (el) {
-        setTargetRect(el.getBoundingClientRect());
-        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-      } else {
-        setTargetRect(null);
-      }
-    });
+    attemptFind();
 
     window.addEventListener('resize', updateRect);
     window.addEventListener('scroll', updateRect, true);
 
     return () => {
-      cancelAnimationFrame(raf);
+      cancelled = true;
+      if (raf) cancelAnimationFrame(raf);
       window.removeEventListener('resize', updateRect);
       window.removeEventListener('scroll', updateRect, true);
     };
@@ -2534,53 +2626,63 @@ const TourOverlay: React.FC<TourOverlayProps> = ({ onClose, onSkip, onStepChange
     onSkip?.();
   };
 
-  if (!targetRect) return null;
+  const tooltip = (customPosition?: React.CSSProperties) => (
+    <div style={{
+      position: 'absolute',
+      width: 300,
+      background: 'white',
+      padding: '16px',
+      borderRadius: '16px',
+      boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+      pointerEvents: 'auto',
+      textAlign: 'center',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px',
+      zIndex: 101,
+      ...customPosition,
+    }}>
+      <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>{currentStep.text}</p>
+      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+        {isIntroStep && onSkip && (
+          <button className="text-button" type="button" onClick={handleSkip} style={{ textDecoration: 'underline', fontSize: '0.9rem' }}>
+            Skip Tour
+          </button>
+        )}
+        <button className="primary-button" onClick={handleNext} style={{ alignSelf: 'center' }}>
+          {step === steps.length - 1 ? "Let's Play!" : "Next ➡"}
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="tour-overlay" style={{ position: 'fixed', inset: 0, zIndex: 100 }}>
-      {/* Highlight border with massive shadow to create "hole" effect */}
-      <div style={{
-        position: 'absolute',
-        left: targetRect.left - 4,
-        top: targetRect.top - 4,
-        width: targetRect.width + 8,
-        height: targetRect.height + 8,
-        border: '4px solid #ff6b6b',
-        borderRadius: '12px',
-        boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
-        pointerEvents: 'none',
-        transition: 'all 0.3s ease'
-      }} />
+      {targetRect && (
+        <div style={{
+          position: 'absolute',
+          left: targetRect.left - 4,
+          top: targetRect.top - 4,
+          width: targetRect.width + 8,
+          height: targetRect.height + 8,
+          border: '4px solid #ff6b6b',
+          borderRadius: '12px',
+          boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+          pointerEvents: 'none',
+          transition: 'all 0.3s ease'
+        }} />
+      )}
 
-      {/* Tooltip */}
-      <div style={{
-        position: 'absolute',
-        left: Math.max(10, Math.min(window.innerWidth - 310, targetRect.left + (targetRect.width / 2) - 150)),
-        top: currentStep.position === 'bottom' ? targetRect.bottom + 20 : targetRect.top - 160,
-        width: 300,
-        background: 'white',
-        padding: '16px',
-        borderRadius: '16px',
-        boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-        pointerEvents: 'auto',
-        textAlign: 'center',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-        zIndex: 101
-      }}>
-        <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>{currentStep.text}</p>
-        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          {isIntroStep && onSkip && (
-            <button className="text-button" type="button" onClick={handleSkip} style={{ textDecoration: 'underline', fontSize: '0.9rem' }}>
-              Skip Tour
-            </button>
-          )}
-          <button className="primary-button" onClick={handleNext} style={{ alignSelf: 'center' }}>
-            {step === steps.length - 1 ? "Let's Play!" : "Next ➡"}
-          </button>
-        </div>
-      </div>
+      {targetRect
+        ? tooltip({
+            left: Math.max(10, Math.min(window.innerWidth - 310, targetRect.left + (targetRect.width / 2) - 150)),
+            top: currentStep.position === 'bottom' ? targetRect.bottom + 20 : targetRect.top - 160,
+          })
+        : tooltip({
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+          })}
     </div>
   );
 };

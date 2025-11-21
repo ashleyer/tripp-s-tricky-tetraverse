@@ -317,6 +317,26 @@
   font-size: 0.85rem;
   color: var(--color-text-main);
 }
+.profile-summary-chips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin: 0.4rem 0 0.2rem 0;
+}
+.profile-chip {
+  background: #f0f8ff;
+  border-radius: 999px;
+  padding: 0.25rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-main);
+  border: 1px solid rgba(11,61,145,0.15);
+}
+.profile-empty-hint {
+  margin: 0.2rem 0 0 0;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
 .profile-summary-age {
   margin: 4px 0 0 0;
   font-size: 0.95rem;
@@ -366,7 +386,7 @@
   flex-wrap: wrap;
   gap: 0.8rem;
   margin-top: 1rem;
-  justify-content: center;
+  justify-content: flex-start;
 }
 .profile-actions button {
   min-width: 160px;
