@@ -361,7 +361,11 @@ function App() {
   }, [player]);
 
   const [selectedGame, setSelectedGame] = useState<GameId | null>(null);
-  const [gameResults, setGameResults] = useState<GameResult[]>([]);
+  const [gameResults, setGameResults] = useState<GameResult[]>(player.gameResults ?? []);
+
+  useEffect(() => {
+    setGameResults(player.gameResults ?? []);
+  }, [player.gameResults]);
   const [showParentOverlay, setShowParentOverlay] = useState<boolean>(false);
   const [showPlayersOverlay, setShowPlayersOverlay] = useState<boolean>(false);
   const [showAboutOverlay, setShowAboutOverlay] = useState<boolean>(false);

@@ -250,3 +250,7 @@ If you'd like direct help, open an issue on the repo above or send a short note!
 ---
 
 ## Built with ❤️ in Boston by AER
+
+## Acknowledgements
+
+Special thanks to GitHub Copilot with Gemini for the collaborative assistance provided throughout this build.
