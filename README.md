@@ -4,6 +4,16 @@ In honour of Tripp's Fourth Birthday, I nixed a boring old card and took a stab 
 
 ---
 
+## ✅ Best Practices at a Glance
+
+- **Child privacy first:** Everything runs locally in the browser. Profiles, avatars, skill totals, and reports never leave the device unless a caregiver exports them manually.
+- **Caregiver-in-the-loop:** Screen-time controls, Parent overlay copy, and the new Parental Report keep grown-ups informed before, during, and after play.
+- **Transparent skill language:** Every skill label is mapped directly to the Montessori/Waldorf-aligned metadata for each game, so snapshots and reports stay honest about what was practiced.
+- **Accessible & responsive UI:** Buttons expose `:focus-visible` outlines, overlays respect `prefers-reduced-motion`, and layouts collapse gracefully down to small phones while staying keyboard friendly.
+- **Ad-free, purchase-free play:** There are no ads, no logins, and no surprise paywalls—just four short games designed for gentle practice.
+
+---
+
 ## 🎮 What’s Inside?
 
 This app is designed for young kids (roughly 3–10) to tap around and have fun while parents stay in control of time and context.
@@ -145,12 +155,12 @@ Important:
 - **Frontend:** React + TypeScript (e.g. Vite React + TS template)
 - **Styles:** Global CSS defined in `index.html`:
   - Dark, arcade-like, green-accent theme
-  - Responsive layout for phones, tablets, and desktops
+  - Responsive layout for phones, tablets, and desktops (carousel collapses, nav buttons wrap, modals shrink on narrow screens)
 - **Accessibility:**
   - Semantic headings and regions
   - ARIA labels for grids, cards, buttons, and dialog
-  - Focus outlines for inputs and interactive elements
-  - Color contrast tuned for dark background
+  - Keyboard-visible focus outlines everywhere, plus `prefers-reduced-motion` support for motion-sensitive families
+  - Color contrast tuned for dark background and kid-readable typography
 - **Sounds:**
   - Uses `<audio>` via `new Audio(...)` for:
     - Button clicks

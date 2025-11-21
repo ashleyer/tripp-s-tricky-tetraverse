@@ -45,6 +45,13 @@ type ScreenTimeState = {
   isActive: boolean;
 };
 
+type SkillBadgeSummary = {
+  name: string;
+  value: number;
+  emoji: string;
+  gameName: string;
+};
+
 const PRELOADED_AVATARS: { id: string; label: string; emoji: string }[] = [
   { id: "rocket", label: "Rocket Hero", emoji: "🚀" },
   { id: "dino", label: "Friendly Dino", emoji: "🦕" },
@@ -129,6 +136,22 @@ const GAME_SKILL_SUMMARY = Object.values(GAME_METADATA).map((meta) => ({
   category: meta.category,
   skills: meta.skills.slice(0, 3),
 }));
+
+const CANONICAL_SKILLS = Array.from(
+  new Set(Object.values(GAME_METADATA).flatMap((meta) => meta.skills))
+);
+
+const SKILL_BADGE_MAP: Record<string, { emoji: string; gameName: string }> = (() => {
+  const map: Record<string, { emoji: string; gameName: string }> = {};
+  Object.values(GAME_METADATA).forEach((meta) => {
+    meta.skills.forEach((skill) => {
+      if (!map[skill]) {
+        map[skill] = { emoji: meta.emoji, gameName: meta.name };
+      }
+    });
+  });
+  return map;
+})();
 
 // Background music choices. Use the app `public/sounds/` folder for bundled tracks.
 const MUSIC_TRACKS: { key: string; label: string; emoji: string; path: string }[] = [
@@ -228,7 +251,7 @@ const ProfilePromptModal: React.FC<ProfilePromptModalProps> = ({ existingName, e
       <div className="modal-content" style={{ textAlign: 'center', maxWidth: 440 }}>
         <h2>Parents: Who is playing today?</h2>
         <p style={{ marginTop: 8, color: 'var(--text-muted)' }}>
-          Choose to reuse the saved player profile or start fresh with a new kiddo before you hand the device over.
+          Choose to reuse the saved player profile or start fresh with a new child before you hand the device over.
         </p>
 
         {existingName ? (
@@ -352,7 +375,6 @@ function App() {
     visible: boolean;
   }>({ gameId: null, visible: false });
   const [pendingAvatarData, setPendingAvatarData] = useState<string | null>(null);
-  const [avatarUploadContext, setAvatarUploadContext] = useState<'current' | 'new'>('current');
   const [musicKey, setMusicKey] = useState<string>(() => {
     try {
       const savedKey = player.musicKey || localStorage.getItem("musicKey");
@@ -400,6 +422,7 @@ function App() {
 
   const [tempName, setTempName] = useState("");
   const [tempAge, setTempAge] = useState("");
+  const [tempScreenLimit, setTempScreenLimit] = useState("");
 
   // ARIA announcer: use shared hook that listens for `ttt-announce` events
   const { announceText } = useAnnouncer();
@@ -561,6 +584,13 @@ function App() {
         });
       }
 
+      const meta = GAME_METADATA[gameId];
+      if (meta?.skills?.length) {
+        meta.skills.forEach((skill) => {
+          lp[skill] = (lp[skill] || 0) + score;
+        });
+      }
+
       // aggregate derived metrics into profile too
       Object.entries(derived).forEach(([k, v]) => {
         lp[k] = (lp[k] || 0) + v;
@@ -608,6 +638,27 @@ function App() {
       ? 'Last player on this device'
       : 'Active player';
   const hasActivePlayer = Boolean(player.name);
+  const isOnboardingView = showCreateForm && !hasActivePlayer;
+  const showProfileSummaryCard = !isOnboardingView && Boolean(summaryProfile?.name);
+
+  const topSkillHighlight = useMemo<SkillBadgeSummary | null>(() => {
+    if (!summaryProfile?.learningProfile) return null;
+    let best: { name: string; value: number; emoji: string; gameName: string } | null = null;
+    CANONICAL_SKILLS.forEach((skill) => {
+      const value = summaryProfile.learningProfile?.[skill];
+      if (!value) return;
+      if (!best || value > best.value) {
+        const badge = SKILL_BADGE_MAP[skill];
+        best = {
+          name: skill,
+          value,
+          emoji: badge?.emoji ?? '⭐️',
+          gameName: badge?.gameName ?? 'Arcade play',
+        };
+      }
+    });
+    return best;
+  }, [summaryProfile]);
 
   const screenTimeMessage = useMemo(() => {
     if (!screenTime.limitMinutes) return "Screen time: No limit set";
@@ -619,16 +670,44 @@ function App() {
     return `Screen time limit: ${screenTime.limitMinutes} minutes`;
   }, [screenTime]);
 
+  const applyScreenTimeLimit = useCallback((minutes: number | null) => {
+    if (minutes && minutes > 0) {
+      setScreenTime({
+        limitMinutes: minutes,
+        remainingSeconds: minutes * 60,
+        isActive: true,
+      });
+    } else {
+      setScreenTime({
+        limitMinutes: null,
+        remainingSeconds: 0,
+        isActive: false,
+      });
+    }
+  }, []);
+
   const lastProfileSummary = useMemo(() => {
     if (!lastPlayer?.name) return "No previous player";
     const ageSuffix = lastPlayer.age ? `, ${lastPlayer.age}` : "";
     return `${lastPlayer.name}${ageSuffix}`;
   }, [lastPlayer]);
 
+  const handleScreenLimitStart = useCallback(() => {
+    if (!tempScreenLimit.trim()) {
+      applyScreenTimeLimit(null);
+      return;
+    }
+    const minutes = Number(tempScreenLimit);
+    if (!Number.isFinite(minutes) || minutes <= 0) return;
+    playSound('click');
+    applyScreenTimeLimit(minutes);
+  }, [applyScreenTimeLimit, tempScreenLimit]);
+
   const handleCreateNewPlayer = useCallback(() => {
     playSound('click');
     setTempName("");
     setTempAge("");
+    setTempScreenLimit("");
     setPendingAvatarData(null);
     setShowCreateForm(true);
     requestAnimationFrame(() => {
@@ -639,18 +718,21 @@ function App() {
   const handleQuickCreateSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!tempName.trim()) return;
+    const parsedLimit = tempScreenLimit ? Number(tempScreenLimit) : null;
     setPlayer({
       ...createEmptyPlayer(),
       name: tempName.trim(),
       age: tempAge ? parseInt(tempAge) : null,
       avatarUrl: pendingAvatarData,
     });
+    applyScreenTimeLimit(parsedLimit && parsedLimit > 0 ? parsedLimit : null);
     playSound('success');
     setTempName("");
     setTempAge("");
+    setTempScreenLimit("");
     setShowCreateForm(false);
     setPendingAvatarData(null);
-  }, [pendingAvatarData, tempAge, tempName]);
+  }, [applyScreenTimeLimit, pendingAvatarData, tempAge, tempName, tempScreenLimit]);
 
   const handleProfilePromptUseExisting = useCallback(() => {
     if (player.name) {
@@ -678,8 +760,7 @@ function App() {
     playSound('success');
   }, [lastPlayer]);
 
-  const requestAvatarUpload = useCallback((context: 'current' | 'new') => {
-    setAvatarUploadContext(context);
+  const requestAvatarUpload = useCallback(() => {
     requestAnimationFrame(() => {
       fileInputRef.current?.click();
     });
@@ -691,21 +772,18 @@ function App() {
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
-      if (avatarUploadContext === 'current') {
-        setPlayer((p) => ({ ...p, avatarUrl: dataUrl }));
-      } else {
-        setPendingAvatarData(dataUrl);
-      }
+      setPendingAvatarData(dataUrl);
     };
     reader.readAsDataURL(file);
     event.target.value = '';
-  }, [avatarUploadContext]);
+  }, []);
 
   const handleCancelCreate = useCallback(() => {
     setShowCreateForm(false);
     setPendingAvatarData(null);
     setTempName("");
     setTempAge("");
+    setTempScreenLimit("");
   }, []);
 
   const endTour = useCallback(() => {
@@ -949,83 +1027,96 @@ function App() {
 
           {/* Player Profile & Points Section */}
           <section className="profile-section" id="tour-profile" aria-label="Current Player">
-            <div className="profile-summary-card">
-              <div className="profile-summary-main">
-                <div className="avatar-preview-box profile-summary-avatar" aria-hidden={!summaryProfile?.avatarUrl}>
-                  {summaryProfile?.avatarUrl ? (
-                    summaryProfile.avatarUrl.startsWith("preloaded:") ? (
-                      <span style={{ fontSize: '2.4rem' }}>
-                        {PRELOADED_AVATARS.find((a) => `preloaded:${a.id}` === summaryProfile.avatarUrl)?.emoji}
-                      </span>
+            {showProfileSummaryCard ? (
+              <div className="profile-summary-card">
+                <div className="profile-summary-main">
+                  <div className="avatar-preview-box profile-summary-avatar" aria-hidden={!summaryProfile?.avatarUrl}>
+                    {summaryProfile?.avatarUrl ? (
+                      summaryProfile.avatarUrl.startsWith("preloaded:") ? (
+                        <span style={{ fontSize: '2.4rem' }}>
+                          {PRELOADED_AVATARS.find((a) => `preloaded:${a.id}` === summaryProfile.avatarUrl)?.emoji}
+                        </span>
+                      ) : (
+                        <img src={summaryProfile.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                      )
                     ) : (
-                      <img src={summaryProfile.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                    )
-                  ) : (
-                    <span style={{ fontSize: '2.2rem' }}>🙂</span>
-                  )}
-                </div>
-                <div>
-                  <p className="profile-summary-label">{summaryLabel}</p>
-                  <h2 className="profile-summary-name">{summaryProfile?.name || 'No player selected'}</h2>
-                  <div className="profile-summary-chips">
-                    <span className="profile-chip">{summaryProfile?.points ?? 0} pts earned</span>
-                    {summaryProfile?.age && (
-                      <span className="profile-chip">{summaryProfile.age} yrs</span>
+                      <span style={{ fontSize: '2.2rem' }}>🙂</span>
                     )}
                   </div>
-                  {!hasActivePlayer && (
-                    <p className="profile-empty-hint">
-                      {lastPlayer?.name
-                        ? `Tap "Load ${lastPlayer.name}" below or create a new profile to start tracking progress.`
-                        : 'Create a player profile to start saving points and skill notes.'}
+                  <div>
+                    <p className="profile-summary-label">{summaryLabel}</p>
+                    <h2 className="profile-summary-name">{summaryProfile?.name || 'No player selected'}</h2>
+                    <div className="profile-summary-chips">
+                      <span className="profile-chip">{summaryProfile?.points ?? 0} pts earned</span>
+                      {summaryProfile?.age && (
+                        <span className="profile-chip">{summaryProfile.age} yrs</span>
+                      )}
+                    </div>
+                    {topSkillHighlight && (
+                      <div className="profile-top-skill" aria-label={`Top skill focus ${topSkillHighlight.name}`}>
+                        <div className="profile-top-skill-emoji" aria-hidden="true">{topSkillHighlight.emoji}</div>
+                        <div className="profile-top-skill-meta">
+                          <p className="profile-top-skill-label">Top Skill Focus</p>
+                          <p className="profile-top-skill-name">{topSkillHighlight.name}</p>
+                          <p className="profile-top-skill-source">Boosted via {topSkillHighlight.gameName}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="profile-summary-meta">
+                  <div className="screen-time-chip">{screenTimeMessage}</div>
+                  <div className="last-profile-card">
+                    <p className="last-profile-label">Last profile</p>
+                    <strong>{lastPlayer?.name || 'None saved yet'}</strong>
+                    <p className="last-profile-details">
+                      {lastPlayer?.name ? `${lastProfileSummary} • ${lastPlayer.points ?? 0} pts` : 'Play once to store a profile.'}
                     </p>
-                  )}
+                  </div>
                 </div>
               </div>
-              <div className="profile-summary-meta">
-                <div className="screen-time-chip">{screenTimeMessage}</div>
-                <div className="last-profile-card">
-                  <p className="last-profile-label">Last profile</p>
-                  <strong>{lastPlayer?.name || 'None saved yet'}</strong>
-                  <p className="last-profile-details">
-                    {lastPlayer?.name ? `${lastProfileSummary} • ${lastPlayer.points ?? 0} pts` : 'Play once to store a profile.'}
-                  </p>
-                </div>
+            ) : (
+              <div className="profile-onboarding-card">
+                <p className="profile-onboarding-label">Add a new player</p>
+                <h2>Pick a name, tap an avatar, set a time limit.</h2>
+                <ul className="profile-onboarding-list">
+                  <li>🎨 Avatar stickers now live below this form.</li>
+                  <li>⏰ Set a screen-time limit without leaving this screen.</li>
+                  <li>✨ We only store notes on this device.</li>
+                </ul>
+                <p className="profile-onboarding-status">{screenTimeMessage}</p>
               </div>
-            </div>
+            )}
 
-            <div className="profile-actions">
-              <button
-                className="secondary-button interactive-hover"
-                type="button"
-                onClick={() => setShowPlayersOverlay(true)}
-              >
-                Manage Profiles
-              </button>
-              <button
-                className="ghost-button interactive-hover"
-                type="button"
-                onClick={handleLoadLastPlayer}
-                disabled={!lastPlayer?.name}
-              >
-                {lastPlayer?.name ? `Load ${lastPlayer.name}` : 'No saved player'}
-              </button>
-              <button
-                className="ghost-button interactive-hover"
-                type="button"
-                onClick={() => requestAvatarUpload('current')}
-                disabled={!hasActivePlayer}
-              >
-                Upload Photo
-              </button>
-              <button
-                className="primary-button interactive-hover"
-                type="button"
-                onClick={showCreateForm ? handleCancelCreate : handleCreateNewPlayer}
-              >
-                {showCreateForm ? 'Hide Create Form' : 'Create New Player'}
-              </button>
-            </div>
+            {!isOnboardingView && (
+              <div className="profile-actions">
+                {summaryProfile?.name && (
+                  <button
+                    className="secondary-button interactive-hover"
+                    type="button"
+                    onClick={() => setShowPlayersOverlay(true)}
+                  >
+                    Manage Profiles
+                  </button>
+                )}
+                {lastPlayer?.name && (
+                  <button
+                    className="ghost-button interactive-hover"
+                    type="button"
+                    onClick={handleLoadLastPlayer}
+                  >
+                    {`Load ${lastPlayer.name}`}
+                  </button>
+                )}
+                <button
+                  className="primary-button interactive-hover"
+                  type="button"
+                  onClick={showCreateForm ? handleCancelCreate : handleCreateNewPlayer}
+                >
+                  {showCreateForm ? 'Hide Create Form' : 'Create New Player'}
+                </button>
+              </div>
+            )}
 
             {showCreateForm && (
               <form
@@ -1035,6 +1126,11 @@ function App() {
                 style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '10px' }}
               >
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)' }}>Add a new player</h3>
+                {!hasActivePlayer && (
+                  <p className="profile-empty-hint">
+                    Tap an avatar to preview instantly, then choose an optional screen-time limit.
+                  </p>
+                )}
                 <div style={{ display: 'flex', gap: '8px', width: '100%', flexWrap: 'wrap' }}>
                   <input
                     type="text"
@@ -1054,7 +1150,13 @@ function App() {
                 <div className="avatar-upload-row">
                   <div className="avatar-preview-box avatar-upload-preview">
                     {pendingAvatarData ? (
-                      <img src={pendingAvatarData} alt="Pending avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                      pendingAvatarData.startsWith('preloaded:') ? (
+                        <span style={{ fontSize: '1.9rem' }}>
+                          {PRELOADED_AVATARS.find((a) => `preloaded:${a.id}` === pendingAvatarData)?.emoji || '🙂'}
+                        </span>
+                      ) : (
+                        <img src={pendingAvatarData} alt="Pending avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                      )
                     ) : (
                       <span style={{ fontSize: '1.8rem' }}>🙂</span>
                     )}
@@ -1063,11 +1165,58 @@ function App() {
                     <button
                       type="button"
                       className="secondary-button interactive-hover"
-                      onClick={() => requestAvatarUpload('new')}
+                      onClick={requestAvatarUpload}
                     >
                       Upload Photo
                     </button>
                     <span className="avatar-upload-hint">Optional: square photo works best</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="avatar-title" style={{ marginTop: '0.2rem' }}>Preloaded avatars</p>
+                  <div className="avatar-list onboarding-avatar-list">
+                    {PRELOADED_AVATARS.map((avatar) => {
+                      const selected = pendingAvatarData === `preloaded:${avatar.id}`;
+                      return (
+                        <button
+                          key={avatar.id}
+                          type="button"
+                          className={`avatar-pill ${selected ? 'avatar-pill-selected' : ''}`}
+                          onClick={() => {
+                            playSound('click');
+                            setPendingAvatarData(`preloaded:${avatar.id}`);
+                          }}
+                          aria-pressed={selected}
+                        >
+                          <span className="avatar-emoji">{avatar.emoji}</span>
+                          <span className="avatar-label">{avatar.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="screen-limit-panel">
+                  <label className="form-label" style={{ marginBottom: '0.4rem' }}>
+                    Screen-time limit (minutes)
+                    <input
+                      type="number"
+                      min="1"
+                      max="120"
+                      value={tempScreenLimit}
+                      onChange={(e) => setTempScreenLimit(e.target.value)}
+                      placeholder="Leave blank for no limit"
+                      style={{ marginTop: '0.2rem' }}
+                    />
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={handleScreenLimitStart}
+                    >
+                      {tempScreenLimit.trim() ? 'Set timer now' : 'Clear limit'}
+                    </button>
+                    <span className="screen-limit-status">{screenTimeMessage}</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -1189,11 +1338,7 @@ function App() {
           screenTime={screenTime}
           onSetScreenTime={(min) => {
             playSound("click");
-            setScreenTime({
-              limitMinutes: min,
-              remainingSeconds: min * 60,
-              isActive: true,
-            });
+            applyScreenTimeLimit(min);
           }}
         />
       )}
@@ -2027,8 +2172,25 @@ const ParentalReport: React.FC<ParentalReportProps> = ({ player, gameResults, on
   const [fromDate, setFromDate] = useState<string>(defaultFrom.toISOString().slice(0,10));
   const [toDate, setToDate] = useState<string>(today.toISOString().slice(0,10));
 
-  const availableSkills = useMemo(() => Object.keys(player.learningProfile || {}), [player.learningProfile]);
-  const [selectedSkills, setSelectedSkills] = useState<string[]>(availableSkills.slice(0, 5));
+  const skillTotals = player.learningProfile || {};
+  const canonicalSkillOptions = CANONICAL_SKILLS;
+  const measuredSkills = canonicalSkillOptions.filter((skill) => (skillTotals[skill] ?? 0) > 0);
+  const initialSelection = (measuredSkills.length ? measuredSkills : canonicalSkillOptions).slice(0, 5);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>(initialSelection);
+
+  useEffect(() => {
+    const latestTotals = player.learningProfile || {};
+    const latestMeasured = canonicalSkillOptions.filter((skill) => (latestTotals[skill] ?? 0) > 0);
+    const fallback = (latestMeasured.length ? latestMeasured : canonicalSkillOptions).slice(0, 5);
+    setSelectedSkills((prev) => {
+      const sanitized = prev.filter((skill) => canonicalSkillOptions.includes(skill));
+      const sanitizedHasData = sanitized.some((skill) => (latestTotals[skill] ?? 0) > 0);
+      if (sanitized.length === 0 || (!sanitizedHasData && latestMeasured.length)) {
+        return fallback;
+      }
+      return sanitized;
+    });
+  }, [player.learningProfile, canonicalSkillOptions]);
   const [chartType, setChartType] = useState<'bar' | 'line' | 'radar'>('bar');
   const [showPreview, setShowPreview] = useState(false);
 
@@ -2042,7 +2204,10 @@ const ParentalReport: React.FC<ParentalReportProps> = ({ player, gameResults, on
   const totalPlays = filteredResults.length;
   
   const skills = player.learningProfile || {};
-  const maxSkillScore = Math.max(...Object.values(skills), 100);
+  const maxSkillScore = Math.max(
+    ...selectedSkills.map((skill) => skills[skill] || 0),
+    100
+  );
 
   const historyMap = new Map<string, number>();
   filteredResults.forEach(r => {
@@ -2135,8 +2300,8 @@ const ParentalReport: React.FC<ParentalReportProps> = ({ player, gameResults, on
 
           <h3 style={{marginTop:0, fontSize:'1.1rem'}}>2. Select Skills to Include</h3>
           <div style={{display:'flex', flexWrap:'wrap', gap:8, marginBottom:16}}>
-            {availableSkills.length === 0 && <span style={{color:'#666', fontStyle:'italic'}}>No skills recorded yet. Play some games!</span>}
-            {availableSkills.map(skill => (
+            {measuredSkills.length === 0 && <span style={{color:'#666', fontStyle:'italic'}}>No skills recorded yet. Play some games!</span>}
+            {canonicalSkillOptions.map((skill) => (
               <label key={skill} style={{display:'flex', alignItems:'center', gap:4, background:'white', padding:'4px 8px', borderRadius:4, border:'1px solid #ddd', cursor:'pointer'}}>
                 <input 
                   type="checkbox" 
@@ -2477,8 +2642,16 @@ interface SkillsOverlayProps {
 }
 
 const SkillsOverlay: React.FC<SkillsOverlayProps> = ({ player, onClose, performanceSummary, onOpenReport }) => {
-  const profile = player.learningProfile || {};
-  const maxScore = Math.max(...Object.values(profile), 100);
+  const skillEntries = useMemo(() => {
+    const totals = player.learningProfile || {};
+    const canonicalEntries = CANONICAL_SKILLS
+      .map((skill) => [skill, totals[skill] ?? 0] as const)
+      .filter(([, value]) => value > 0);
+    if (canonicalEntries.length) return canonicalEntries;
+    return Object.entries(totals);
+  }, [player.learningProfile]);
+
+  const maxScore = Math.max(...skillEntries.map(([, value]) => value), 100);
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
@@ -2487,10 +2660,10 @@ const SkillsOverlay: React.FC<SkillsOverlayProps> = ({ player, onClose, performa
         <p style={{textAlign:'center', color:'var(--text-muted)'}}>Look at how much your brain is growing!</p>
         
         <div style={{margin:'20px 0', display:'flex', flexDirection:'column', gap:'12px'}}>
-          {Object.entries(profile).length === 0 ? (
+          {skillEntries.length === 0 ? (
             <p style={{textAlign:'center', fontStyle:'italic'}}>Play some games to see your skills grow!</p>
           ) : (
-            Object.entries(profile).map(([skill, score]) => (
+            skillEntries.map(([skill, score]) => (
               <div key={skill} style={{display:'flex', alignItems:'center', gap:'10px'}}>
                 <div style={{width:'120px', fontSize:'0.9rem', fontWeight:'bold', textAlign:'right'}}>{skill}</div>
                 <div style={{flex:1, background:'#eee', borderRadius:'10px', height:'16px', overflow:'hidden'}}>
@@ -2544,7 +2717,7 @@ const TourOverlay: React.FC<TourOverlayProps> = ({ onClose, onSkip, onStepChange
   const [step, setStep] = useState(0);
   const steps = [
     { id: 'tour-nav', text: "Parents & caregivers: this quick tour shows where everything lives. Skip anytime!", position: 'bottom' },
-    { id: 'tour-menu-players', text: "Players button opens saved profiles so you can switch kiddos or edit details.", position: 'bottom' },
+    { id: 'tour-menu-players', text: "Players button opens saved profiles so you can switch children or edit details.", position: 'bottom' },
     { id: 'tour-prize-shop', text: "Prize Shop lets you convert earned points into virtual goodies for motivation.", position: 'bottom' },
     { id: 'tour-skills', text: "Skills Built gives caregivers a quick snapshot of what was practiced.", position: 'bottom' },
     { id: 'tour-parent', text: "Parents button houses the disclaimer plus screen-time timers and reports.", position: 'bottom' },
