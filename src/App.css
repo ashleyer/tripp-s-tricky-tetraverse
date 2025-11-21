@@ -415,16 +415,17 @@
 .game-card .skills-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
   justify-content: center;
   margin-bottom: 1.5em;
+  padding: 4px 0;
 }
 .game-card .skill-chip {
   background: #f0f0f0;
   color: var(--color-text-main);
   border: 2px solid #ddd;
   border-radius: 20px;
-  padding: 0.4em 1em;
+  padding: 0.6em 1em;
   font-size: 1rem;
   font-weight: 700;
 }

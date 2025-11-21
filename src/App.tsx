@@ -7,6 +7,7 @@ import MemoryGame from './games/MemoryGame';
 import DiggingGame from './games/DiggingGame';
 import BootsGame from './games/BootsGame';
 import AirplanesGame from './games/AirplanesGame';
+import { SkillBar } from './Skills';
 
 type GameId = "memory" | "digging" | "boots" | "airplanes";
 
@@ -177,8 +178,8 @@ function App() {
   const [showParentOverlay, setShowParentOverlay] = useState<boolean>(false);
   const [showPlayersOverlay, setShowPlayersOverlay] = useState<boolean>(false);
   const [showAboutOverlay, setShowAboutOverlay] = useState<boolean>(false);
-  const [showIntro, setShowIntro] = useState<boolean>(!player.name);
-  const [showWelcomeBack, setShowWelcomeBack] = useState<boolean>(!!player.name);
+  const [showIntro, setShowIntro] = useState<boolean>(true);
+  const [showWelcomeBack, setShowWelcomeBack] = useState<boolean>(false);
   const [showTour, setShowTour] = useState<boolean>(false);
   const [pendingTour, setPendingTour] = useState<boolean>(false);
   const [showTutorial, setShowTutorial] = useState<{
@@ -552,6 +553,18 @@ function App() {
       if (rememberMusic) localStorage.setItem("musicVolume", String(musicVolume));
     } catch (e) {}
   }, [musicVolume, rememberMusic]);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("playerProfile");
+    if (raw) {
+      const p = JSON.parse(raw) as PlayerProfile;
+      if (p.name) {
+        setPlayer(p);
+        setShowIntro(false);
+        setShowWelcomeBack(true);
+      }
+    }
+  }, []);
 
   return (
     <div className={`app-root ${selectedGame ? "in-game" : ""}`}>
@@ -1486,8 +1499,27 @@ const PlayersOverlay: React.FC<PlayersOverlayProps> = ({ player, onClose, onSave
         </div>
 
         <div style={{ background: 'rgba(0,0,0,0.03)', padding: '12px', borderRadius: '12px', marginBottom: '1rem' }}>
-          <h3 style={{fontSize:'1rem', margin:'0 0 6px 0'}}>Skill Snapshot</h3>
-          <p style={{fontSize:'0.9rem', margin:0, color:'var(--text-muted)'}}>{performanceSummary}</p>
+          <h3 style={{fontSize:'1rem', margin:'0 0 12px 0'}}>Skill Snapshot</h3>
+          
+          {Object.keys(player.learningProfile || {}).length > 0 ? (
+            (() => {
+              const skills = player.learningProfile || {};
+              const maxValue = Math.max(...Object.values(skills));
+              return Object.entries(skills)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, 5)
+                .map(([skill, value]) => (
+                  <SkillBar 
+                    key={skill}
+                    skill={skill}
+                    percentage={(value / maxValue) * 100}
+                  />
+                ));
+            })()
+          ) : (
+            <p style={{fontSize:'0.9rem', margin:0, color:'var(--text-muted)'}}>{performanceSummary}</p>
+          )}
+
           <button 
             className="text-link" 
             onClick={onOpenReport}
@@ -1784,38 +1816,22 @@ const ParentalReport: React.FC<ParentalReportProps> = ({ player, gameResults, on
                   {/* BAR CHART LOGIC */}
                   {chartType === 'bar' && (
                     <>
-                      {/* Y Axis */}
-                      <line x1="0" y1="0" x2="0" y2="400" stroke="#333" strokeWidth="2" />
-                      <text x="-10" y="10" textAnchor="end" fontSize="12">Max</text>
-                      <text x="-10" y="400" textAnchor="end" fontSize="12">0</text>
-                      <text x="-30" y="200" textAnchor="middle" transform="rotate(-90, -30, 200)" fontSize="14" fill="#666">Total Points</text>
-
-                      {/* X Axis */}
-                      <line x1="0" y1="400" x2="600" y2="400" stroke="#333" strokeWidth="2" />
-                      
                       {selectedSkills.length === 0 ? (
                         <text x="300" y="200" textAnchor="middle" fill="#999">Select skills above to see data</text>
                       ) : (
                         selectedSkills.map((skill, i) => {
                           const score = skills[skill] || 0;
-                          const barHeight = (score / (maxSkillScore || 1)) * 380;
-                          const barWidth = Math.min(60, 500 / selectedSkills.length);
-                          const x = 40 + i * (600 / selectedSkills.length);
+                          const percentage = (score / (maxSkillScore || 1)) * 100;
+                          const y = 20 + i * 45;
                           
                           return (
-                            <g key={skill}>
-                              <rect x={x} y={400 - barHeight} width={barWidth} height={barHeight} fill="#4cc9f0" rx="4" />
-                              <text x={x + barWidth/2} y={390 - barHeight} textAnchor="middle" fontSize="12" fill="#333">{score}</text>
-                              <text 
-                                x={x + barWidth/2} 
-                                y={420} 
-                                textAnchor="end" 
-                                transform={`rotate(-45, ${x + barWidth/2}, 420)`} 
-                                fontSize="12" 
-                                fill="#333"
-                              >
-                                {skill}
-                              </text>
+                            <g key={skill} transform={`translate(0, ${y})`}>
+                              <foreignObject x="-150" y="0" width="700" height="50">
+                                <SkillBar 
+                                  skill={skill}
+                                  percentage={percentage}
+                                />
+                              </foreignObject>
                             </g>
                           );
                         })
