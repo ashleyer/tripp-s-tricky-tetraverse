@@ -306,7 +306,7 @@ function App() {
     if (stored) return stored;
     return player.name ? player : null;
   });
-  const [showCreateForm, setShowCreateForm] = useState<boolean>(() => !player.name);
+  const [showCreateForm, setShowCreateForm] = useState<boolean>(false);
 
   // persist player profile locally
   useEffect(() => {
@@ -1327,10 +1327,14 @@ const ArcadeView: React.FC<ArcadeViewProps> = ({ canPlay, onSelectGame, initialG
         <p className="arcade-blurb">
           Pick from 4 tricky games! Play to learn new skills and earn points.
         </p>
+        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '0.5rem' }}>
+          Swipe left/right or use arrows to explore all games.
+        </p>
       </div>
 
       <div className="carousel-wrapper" id="tour-game-carousel">
         <button
+          id="tour-carousel-prev"
           type="button"
           className="carousel-nav parent-button overlay-nav-btn interactive-hover"
           onClick={prev}
@@ -1373,6 +1377,7 @@ const ArcadeView: React.FC<ArcadeViewProps> = ({ canPlay, onSelectGame, initialG
         </article>
 
         <button
+          id="tour-carousel-next"
           type="button"
           className="carousel-nav parent-button overlay-nav-btn interactive-hover"
           onClick={next}
@@ -2453,14 +2458,15 @@ interface TourOverlayProps {
 const TourOverlay: React.FC<TourOverlayProps> = ({ onClose, onSkip, onStepChange }) => {
   const [step, setStep] = useState(0);
   const steps = [
-    { id: 'tour-start-anchor', text: "Parents & caregivers: this quick tour shows where everything lives. Skip anytime!", position: 'bottom' },
+    { id: 'tour-nav', text: "Parents & caregivers: this quick tour shows where everything lives. Skip anytime!", position: 'bottom' },
     { id: 'tour-menu-players', text: "Players button opens saved profiles so you can switch kiddos or edit details.", position: 'bottom' },
     { id: 'tour-prize-shop', text: "Prize Shop lets you convert earned points into virtual goodies for motivation.", position: 'bottom' },
     { id: 'tour-skills', text: "Skills Built gives caregivers a quick snapshot of what was practiced.", position: 'bottom' },
     { id: 'tour-parent', text: "Parents button houses the disclaimer plus screen-time timers and reports.", position: 'bottom' },
     { id: 'tour-about', text: "About explains the arcade's purpose and how to reach the creator.", position: 'bottom' },
     { id: 'tour-profile', text: "This panel shows the active avatar, point total, and screen-time status.", position: 'bottom' },
-    { id: 'tour-music-controls', text: "Pick or mute the soundtrack here before handing off the device.", position: 'top' },
+    { id: 'tour-music-controls', text: "Choose background music or mute it before starting games.", position: 'top' },
+    { id: 'tour-carousel-next', text: "Use these arrows or swipe to move between each arcade game.", position: 'top' },
     { id: 'tour-game-memory', text: "Truck Match builds memory and focus by pairing trucks and tools.", position: 'top' },
     { id: 'tour-game-digging', text: "Long Shorty's Loot is a calm tap game about patience and cause/effect.", position: 'top' },
     { id: 'tour-game-boots', text: "Boot Designer sparks creativity with colors, stickers, and patterns.", position: 'top' },
@@ -2470,7 +2476,7 @@ const TourOverlay: React.FC<TourOverlayProps> = ({ onClose, onSkip, onStepChange
 
   const currentStep = steps[step];
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
-  const isIntroStep = currentStep.id === 'tour-start-anchor';
+  const isIntroStep = currentStep.id === 'tour-nav';
 
   useEffect(() => {
     onStepChange?.(currentStep.id);
@@ -2496,7 +2502,7 @@ const TourOverlay: React.FC<TourOverlayProps> = ({ onClose, onSkip, onStepChange
       const el = document.getElementById(currentStep.id);
       if (el) {
         setTargetRect(el.getBoundingClientRect());
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
       } else {
         setTargetRect(null);
       }
