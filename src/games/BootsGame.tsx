@@ -25,7 +25,7 @@ const BootsGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
     '#FFFFFF', '#333333'
   ];
 
-  const STICKER_OPTIONS = ['⭐', '❤️', '🌸', '🦋', '🌈', '🦄', '🦖', '⚽', '🎀', '💎'];
+  const STICKER_OPTIONS = ['⭐', '❤️', '🌸', '🦋', '🌈', '🦄', '🦖', '⚽', '🎀', '💎', '⚡️', '🎸', '🎨', '🚀', '🪐'];
 
   const handleBootClick = (e: React.MouseEvent) => {
     if (!selectedSticker || finished) return;
@@ -44,8 +44,9 @@ const BootsGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
     playSound('success');
     if (containerRef.current) createConfetti(containerRef.current, 50);
     // Award points for creativity!
-    const score = 100; 
-    onFinish(score, 1, { creativity: 100 });
+    const creativityScore = (stickers.length * 5) + (pattern !== 'none' ? 10 : 0) + (bootColor !== '#FFD700' ? 5 : 0) + (soleColor !== '#333333' ? 5 : 0) + (detailColor !== '#FFFFFF' ? 5 : 0);
+    const score = Math.min(100, 20 + creativityScore); 
+    onFinish(score, 1, { creativity: score });
   };
 
   const reset = () => {

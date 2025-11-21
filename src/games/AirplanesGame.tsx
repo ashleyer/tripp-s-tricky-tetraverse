@@ -128,6 +128,7 @@ const AirplanesGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
       playSound('fail');
       // Optional: visual feedback for wrong click?
       // The sound is the main feedback requested.
+      playSound('fail');
     }
   };
 

@@ -24,12 +24,7 @@ export function playSound(key: keyof typeof soundPaths) {
 
 let clickToggle = false;
 export function playAlternateClick() {
-  clickToggle = !clickToggle;
-  if (clickToggle) {
-    playSound('click');
-  } else {
-    playPop();
-  }
+  playSound('click');
 }
 
 export function playPop() {

@@ -38,9 +38,11 @@ const DiggingGame: React.FC<SimpleGameProps> = ({ onFinish, onExit }) => {
       const score = Math.max(10, 100 - (attempts - 1) * 15);
       setScoreEarned(score);
       onFinish(score, attempts, { persistence: attempts });
-    } else if (newDug.length === cells.length) {
+    } else {
       playSound('fail');
-      onFinish(10, newDug.length, { persistence: newDug.length });
+      if (newDug.length === cells.length) {
+        onFinish(10, newDug.length, { persistence: newDug.length });
+      }
     }
   };
 

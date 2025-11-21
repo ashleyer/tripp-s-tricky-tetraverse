@@ -187,7 +187,12 @@ function App() {
   }>({ gameId: null, visible: false });
   const [musicKey, setMusicKey] = useState<string>(() => {
     try {
-      return player.musicKey || localStorage.getItem("musicKey") || "silent";
+      const savedKey = player.musicKey || localStorage.getItem("musicKey");
+      if (savedKey) return savedKey;
+      // On first load, pick a random track that isn't silent
+      const playableTracks = MUSIC_TRACKS.filter(t => t.key !== 'silent');
+      const randomTrack = playableTracks[Math.floor(Math.random() * playableTracks.length)];
+      return randomTrack.key;
     } catch (e) {
       return "silent";
     }
