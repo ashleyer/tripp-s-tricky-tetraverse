@@ -333,6 +333,8 @@ function App() {
     gameId: GameId | null;
     visible: boolean;
   }>({ gameId: null, visible: false });
+  const [pendingAvatarData, setPendingAvatarData] = useState<string | null>(null);
+  const [avatarUploadContext, setAvatarUploadContext] = useState<'current' | 'new'>('current');
   const [musicKey, setMusicKey] = useState<string>(() => {
     try {
       const savedKey = player.musicKey || localStorage.getItem("musicKey");
@@ -365,6 +367,7 @@ function App() {
   const [isMusicPlaying, setIsMusicPlaying] = useState<boolean>(false);
   const musicRef = useRef<HTMLAudioElement | null>(null);
   const currentMusicKeyRef = useRef<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [showParentalReport, setShowParentalReport] = useState<boolean>(false);
   const [showPrizeShop, setShowPrizeShop] = useState<boolean>(false);
@@ -602,6 +605,7 @@ function App() {
     playSound('click');
     setTempName("");
     setTempAge("");
+    setPendingAvatarData(null);
     setShowCreateForm(true);
     requestAnimationFrame(() => {
       document.getElementById('profile-create-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -615,12 +619,14 @@ function App() {
       ...createEmptyPlayer(),
       name: tempName.trim(),
       age: tempAge ? parseInt(tempAge) : null,
+      avatarUrl: pendingAvatarData,
     });
     playSound('success');
     setTempName("");
     setTempAge("");
     setShowCreateForm(false);
-  }, [tempAge, tempName]);
+    setPendingAvatarData(null);
+  }, [pendingAvatarData, tempAge, tempName]);
 
   const handleProfilePromptUseExisting = useCallback(() => {
     if (player.name) {
@@ -630,6 +636,7 @@ function App() {
     if (lastPlayer) {
       setPlayer(hydratePlayer(lastPlayer));
       setShowCreateForm(false);
+      setPendingAvatarData(null);
     }
     setShowProfilePrompt(false);
   }, [lastPlayer, player.name]);
@@ -638,6 +645,42 @@ function App() {
     setShowProfilePrompt(false);
     handleCreateNewPlayer();
   }, [handleCreateNewPlayer]);
+
+  const requestAvatarUpload = useCallback((context: 'current' | 'new') => {
+    setAvatarUploadContext(context);
+    requestAnimationFrame(() => {
+      fileInputRef.current?.click();
+    });
+  }, []);
+
+  const handleAvatarFileSelected = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      if (avatarUploadContext === 'current') {
+        setPlayer((p) => ({ ...p, avatarUrl: dataUrl }));
+      } else {
+        setPendingAvatarData(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  }, [avatarUploadContext]);
+
+  const handleCancelCreate = useCallback(() => {
+    setShowCreateForm(false);
+    setPendingAvatarData(null);
+    setTempName("");
+    setTempAge("");
+  }, []);
+
+  const endTour = useCallback(() => {
+    setShowTour(false);
+    setShowProfilePrompt(true);
+    setTourTargetGameId(null);
+  }, []);
 
   const handleTourStepChange = useCallback((stepId: string | null) => {
     if (stepId && stepId.startsWith('tour-game-')) {
@@ -787,7 +830,7 @@ function App() {
   }, []);
 
   return (
-    <div className={`app-root ${selectedGame ? "in-game" : ""}`}>
+    <div className={`app-root ${selectedGame ? "in-game" : ""}`} id="tour-start-anchor">
       <GlobalEffects />
 
       {showIntro && (
@@ -811,6 +854,14 @@ function App() {
                 </div>
               </div>
             </header>
+
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleAvatarFileSelected}
+            />
 
             {/* Main Navigation Bar */}
             <nav className="main-overlay-nav" id="tour-nav">
@@ -907,12 +958,22 @@ function App() {
             <div className="profile-actions">
               <button
                 className="secondary-button interactive-hover"
+                type="button"
                 onClick={() => setShowPlayersOverlay(true)}
               >
                 Manage Profiles
               </button>
               <button
+                className="ghost-button interactive-hover"
+                type="button"
+                onClick={() => requestAvatarUpload('current')}
+                disabled={!player.name}
+              >
+                Upload Photo
+              </button>
+              <button
                 className="primary-button interactive-hover"
+                type="button"
                 onClick={handleCreateNewPlayer}
               >
                 {showCreateForm ? 'Start Fresh' : 'Create New Player'}
@@ -943,6 +1004,25 @@ function App() {
                     style={{ width: '90px', padding: '8px', borderRadius: '12px', border: '1px solid #ccc' }}
                   />
                 </div>
+                <div className="avatar-upload-row">
+                  <div className="avatar-preview-box avatar-upload-preview">
+                    {pendingAvatarData ? (
+                      <img src={pendingAvatarData} alt="Pending avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                    ) : (
+                      <span style={{ fontSize: '1.8rem' }}>🙂</span>
+                    )}
+                  </div>
+                  <div className="avatar-upload-controls">
+                    <button
+                      type="button"
+                      className="secondary-button interactive-hover"
+                      onClick={() => requestAvatarUpload('new')}
+                    >
+                      Upload Photo
+                    </button>
+                    <span className="avatar-upload-hint">Optional: square photo works best</span>
+                  </div>
+                </div>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button
                     className="primary-button"
@@ -955,7 +1035,7 @@ function App() {
                   <button
                     type="button"
                     className="text-button"
-                    onClick={() => setShowCreateForm(false)}
+                    onClick={handleCancelCreate}
                     style={{ fontSize: '0.9rem', textDecoration: 'underline', color: 'var(--text-muted)' }}
                   >
                     Cancel
@@ -1001,11 +1081,8 @@ function App() {
 
       {showTour && (
         <TourOverlay
-          onClose={() => {
-            setShowTour(false);
-            setShowProfilePrompt(true);
-            setTourTargetGameId(null);
-          }}
+          onClose={endTour}
+          onSkip={endTour}
           onStepChange={handleTourStepChange}
         />
       )}
@@ -1131,6 +1208,7 @@ function App() {
                setShowCreateForm(true);
                setTempName("");
                setTempAge("");
+               setPendingAvatarData(null);
             }
           }}
         />
@@ -1150,6 +1228,7 @@ function App() {
             setShowCreateForm(true);
             setTempName("");
             setTempAge("");
+            setPendingAvatarData(null);
           }}
         />
       )}
@@ -2367,14 +2446,16 @@ const SkillsOverlay: React.FC<SkillsOverlayProps> = ({ player, onClose, performa
 // --- Tour Overlay ---
 interface TourOverlayProps {
   onClose: () => void;
+  onSkip?: () => void;
   onStepChange?: (stepId: string | null) => void;
 }
 
-const TourOverlay: React.FC<TourOverlayProps> = ({ onClose, onStepChange }) => {
+const TourOverlay: React.FC<TourOverlayProps> = ({ onClose, onSkip, onStepChange }) => {
   const [step, setStep] = useState(0);
   const steps = [
+    { id: 'tour-start-anchor', text: "Parents & caregivers: this quick tour shows where everything lives. Skip anytime!", position: 'bottom' },
     { id: 'tour-menu-players', text: "Players button opens saved profiles so you can switch kiddos or edit details.", position: 'bottom' },
-    { id: 'tour-prize-shop', text: "Prize Shop lets you convert earned points into pretend goodies for motivation.", position: 'bottom' },
+    { id: 'tour-prize-shop', text: "Prize Shop lets you convert earned points into virtual goodies for motivation.", position: 'bottom' },
     { id: 'tour-skills', text: "Skills Built gives caregivers a quick snapshot of what was practiced.", position: 'bottom' },
     { id: 'tour-parent', text: "Parents button houses the disclaimer plus screen-time timers and reports.", position: 'bottom' },
     { id: 'tour-about', text: "About explains the arcade's purpose and how to reach the creator.", position: 'bottom' },
@@ -2384,11 +2465,12 @@ const TourOverlay: React.FC<TourOverlayProps> = ({ onClose, onStepChange }) => {
     { id: 'tour-game-digging', text: "Long Shorty's Loot is a calm tap game about patience and cause/effect.", position: 'top' },
     { id: 'tour-game-boots', text: "Boot Designer sparks creativity with colors, stickers, and patterns.", position: 'top' },
     { id: 'tour-game-airplanes', text: "Airplane Catch sharpens reaction time and hand-eye coordination.", position: 'top' },
-    { id: 'tour-footer', text: "Created with love by Auntie Ashley.", position: 'top' },
+    { id: 'tour-footer', text: "Created by Auntie Ashley for Tripp's fourth birthday!", position: 'top' },
   ];
 
   const currentStep = steps[step];
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const isIntroStep = currentStep.id === 'tour-start-anchor';
 
   useEffect(() => {
     onStepChange?.(currentStep.id);
@@ -2441,6 +2523,11 @@ const TourOverlay: React.FC<TourOverlayProps> = ({ onClose, onStepChange }) => {
     }
   };
 
+  const handleSkip = () => {
+    onStepChange?.(null);
+    onSkip?.();
+  };
+
   if (!targetRect) return null;
 
   return (
@@ -2476,10 +2563,17 @@ const TourOverlay: React.FC<TourOverlayProps> = ({ onClose, onStepChange }) => {
         gap: '10px',
         zIndex: 101
       }}>
-        <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>{currentStep.text}</p>
-        <button className="primary-button" onClick={handleNext} style={{ alignSelf: 'center' }}>
-          {step === steps.length - 1 ? "Let's Play!" : "Next ➡"}
-        </button>
+        <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>{currentStep.text}</p>
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          {isIntroStep && onSkip && (
+            <button className="text-button" type="button" onClick={handleSkip} style={{ textDecoration: 'underline', fontSize: '0.9rem' }}>
+              Skip Tour
+            </button>
+          )}
+          <button className="primary-button" onClick={handleNext} style={{ alignSelf: 'center' }}>
+            {step === steps.length - 1 ? "Let's Play!" : "Next ➡"}
+          </button>
+        </div>
       </div>
     </div>
   );
