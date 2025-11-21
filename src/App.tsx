@@ -155,6 +155,40 @@ const WelcomeBackModal: React.FC<WelcomeBackModalProps> = ({ playerName, onPlay,
   );
 };
 
+interface WelcomeOverlayProps {
+  onReturning: () => void;
+  onNew: () => void;
+  hasExistingPlayer: boolean;
+}
+
+const WelcomeOverlay: React.FC<WelcomeOverlayProps> = ({ onReturning, onNew, hasExistingPlayer }) => {
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal-content" style={{textAlign: 'center', maxWidth: '420px'}}>
+        <h2>Welcome!</h2>
+        <div style={{fontSize: '4rem', margin: '20px 0'}}>✨</div>
+        <p style={{color: 'var(--text-muted)', fontSize: '1.1rem'}}>Have you played before?</p>
+        <div style={{display: 'flex', flexDirection: 'column', gap: '12px', margin: '20px auto 0', width: '100%'}}>
+          <button 
+            className="primary-button" 
+            onClick={onReturning} 
+            style={{width: '100%'}}
+            disabled={!hasExistingPlayer}
+          >
+            Yes, I'm a Returning Player
+          </button>
+          <button className="secondary-button" onClick={onNew} style={{width: '100%'}}>No, I'm a New Player</button>
+        </div>
+        {!hasExistingPlayer && (
+          <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '12px'}}>
+            (No players found on this device)
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
+
 function App() {
   const [player, setPlayer] = useState<PlayerProfile>(() => {
     try {
@@ -179,6 +213,7 @@ function App() {
   const [showPlayersOverlay, setShowPlayersOverlay] = useState<boolean>(false);
   const [showAboutOverlay, setShowAboutOverlay] = useState<boolean>(false);
   const [showIntro, setShowIntro] = useState<boolean>(true);
+  const [showWelcomeOverlay, setShowWelcomeOverlay] = useState<boolean>(false);
   const [showWelcomeBack, setShowWelcomeBack] = useState<boolean>(false);
   const [showTour, setShowTour] = useState<boolean>(false);
   const [pendingTour, setPendingTour] = useState<boolean>(false);
@@ -530,7 +565,7 @@ function App() {
   // apply persisted music choice on mount
   useEffect(() => {
     if (musicKey && musicKey !== "silent") {
-      setBackgroundMusic(musicKey, false);
+      setBackgroundMusic(musicKey, true); // Autoplay on load
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -557,185 +592,212 @@ function App() {
   useEffect(() => {
     const raw = localStorage.getItem("playerProfile");
     if (raw) {
-      const p = JSON.parse(raw) as PlayerProfile;
-      if (p.name) {
-        setPlayer(p);
-        setShowIntro(false);
-        setShowWelcomeBack(true);
+      try {
+        const p = JSON.parse(raw) as PlayerProfile;
+        if (p.name) {
+          setPlayer(p);
+        }
+      } catch (e) {
+        // Malformed data, treat as new player
+        localStorage.removeItem("playerProfile");
       }
     }
+    setShowWelcomeOverlay(true); // Show welcome overlay on initial load
   }, []);
 
   return (
     <div className={`app-root ${selectedGame ? "in-game" : ""}`}>
       <GlobalEffects />
 
-      <div className="sticky-top-bar">
-        <header className="app-header" aria-label="Tripp's Tricky Tetraverse">
-          <div className="header-main">
-            <div className="header-text-block">
-              <h1 className="app-title design-title" aria-label="Tripp's Tricky Tetraverse">
-                Tripp's Tricky Tetraverse
-              </h1>
-              <p className="app-subtitle design-subtitle" style={{ fontFamily: '"Rubik Bubbles", cursive', letterSpacing: '0.05em' }}>an All Four You arcade</p>
-            </div>
-          </div>
-        </header>
-
-        {/* Main Navigation Bar */}
-        <nav className="main-overlay-nav" id="tour-nav">
-          <ul className="overlay-list">
-            <li>
-              <button className="overlay-nav-btn interactive-hover" onClick={() => setShowPlayersOverlay(true)}>
-                Players {player.avatarUrl ? '🙂' : ''}
-              </button>
-            </li>
-            <li>
-              <button className="overlay-nav-btn interactive-hover" onClick={() => setShowPrizeShop(true)}>
-                Prize Shop 🏆
-              </button>
-            </li>
-            <li>
-              <button className="overlay-nav-btn interactive-hover" onClick={() => setShowSkillsOverlay(true)}>
-                Skills Built 📊
-              </button>
-            </li>
-            <li>
-              <button className="overlay-nav-btn interactive-hover" onClick={() => setShowParentOverlay(true)}>
-                Parents 🛡️
-              </button>
-            </li>
-            <li>
-              <button className="overlay-nav-btn interactive-hover" onClick={() => setShowAboutOverlay(true)}>
-                About ℹ️
-              </button>
-            </li>
-          </ul>
-        </nav>
-      </div>
-
-      {/* Player Profile & Points Section */}
-      <section className="profile-section" id="tour-profile" aria-label="Current Player">
-        {!player.name ? (
-          <div className="profile-setup" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '10px' }}>
-            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)' }}>Who is playing?</h3>
-            <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '320px' }}>
-              <input 
-                type="text" 
-                placeholder="Name" 
-                value={tempName}
-                onChange={(e) => setTempName(e.target.value)}
-                style={{ flex: 1, padding: '8px', borderRadius: '12px', border: '1px solid #ccc' }}
-              />
-              <input 
-                type="number" 
-                placeholder="Age" 
-                value={tempAge}
-                onChange={(e) => setTempAge(e.target.value)}
-                style={{ width: '70px', padding: '8px', borderRadius: '12px', border: '1px solid #ccc' }}
-              />
-            </div>
-            <button 
-              className="primary-button" 
-              disabled={!tempName}
-              onClick={() => {
-                setPlayer(p => ({ ...p, name: tempName, age: tempAge ? parseInt(tempAge) : null }));
-                playSound('success');
-              }}
-              style={{ width: '100%', maxWidth: '320px', justifyContent: 'center' }}
-            >
-              Let's Play!
-            </button>
-          </div>
-        ) : (
-          <>
-          <div 
-            className="profile-card interactive-hover" 
-            onClick={() => setShowPlayersOverlay(true)}
-            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div className="avatar-preview-box" style={{ width: 56, height: 56, borderRadius: '50%', border: '3px solid var(--color-accent)', background: '#fff' }}>
-                {player.avatarUrl ? (
-                  player.avatarUrl.startsWith("preloaded:") ? (
-                    <span style={{ fontSize: '2rem' }}>
-                      {PRELOADED_AVATARS.find((a) => `preloaded:${a.id}` === player.avatarUrl)?.emoji}
-                    </span>
-                  ) : (
-                    <img src={player.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                  )
-                ) : (
-                  <span style={{ fontSize: '2rem' }}>🙂</span>
-                )}
-              </div>
-              <div>
-                <h2 style={{ fontSize: '1.3rem', margin: 0, fontFamily: 'var(--font-display)' }}>{player.name}</h2>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                  {player.age ? `${player.age} years old` : 'Ready to play!'}
-                </p>
-              </div>
-            </div>
-            
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--color-accent)', fontFamily: 'var(--font-display)' }}>
-                {player.points || 0} <span style={{ fontSize: '1rem', color: 'var(--text-main)' }}>pts</span>
-              </div>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '140px', lineHeight: 1.2 }}>
-                Save up for the <strong>Prize Shop</strong>!
-              </p>
-            </div>
-          </div>
-          <div style={{textAlign: 'center', marginTop: '4px'}}>
-             <button 
-               className="text-button" 
-               onClick={() => setShowPlayersOverlay(true)} 
-               style={{fontSize: '0.8rem', textDecoration: 'underline', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer'}}
-             >
-               Switch Player
-             </button>
-          </div>
-          </>
-        )}
-      </section>
-
-      {/* Music Choice Section */}
-      <section className="music-choice-section" aria-label="Music Selection">
-        <h3 style={{ fontSize: '1.4rem', margin: '0 0 0.5rem 0' }}>🎵 Music Choice 🎵</h3>
-        <p style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)' }}>
-          Tap a button to change the music!
-        </p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
-          <button 
-            className="music-tile interactive-hover" 
-            onClick={toggleMusicPlay} 
-            style={{ minWidth: '60px', background: isMusicPlaying ? 'var(--accent-soft)' : '#eee' }}
-          >
-            {isMusicPlaying ? '⏸' : '▶️'}
-          </button>
-          {MUSIC_TRACKS.map(t => (
-            <button 
-              key={t.key}
-              className={`music-tile interactive-hover ${musicKey === t.key ? 'music-tile-selected' : ''}`}
-              onClick={() => setBackgroundMusic(t.key, true)}
-            >
-              <span style={{ fontSize: '1.4rem' }}>{t.emoji}</span>
-              <span>{t.label}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-
+      {showWelcomeOverlay && (
+        <WelcomeOverlay 
+          hasExistingPlayer={!!player.name}
+          onReturning={() => {
+            setShowWelcomeOverlay(false);
+            setShowWelcomeBack(true);
+          }}
+          onNew={() => {
+            setShowWelcomeOverlay(false);
+            // Reset player state for new profile creation
+            setPlayer({ name: "", age: null, avatarUrl: null, points: 0, learningProfile: {} });
+          }}
+        />
+      )}
 
       {showIntro && (
         <IntroBanner
           onBegin={() => {
             setShowIntro(false);
-            setPendingTour(true);
-            setShowParentOverlay(true);
+            if (player.name) {
+              setShowWelcomeBack(true);
+            } else {
+              setPendingTour(true);
+              setShowParentOverlay(true);
+            }
           }}
         />
       )}
+
+      {!showIntro && (
+        <>
+          <div className="sticky-top-bar">
+            <header className="app-header" aria-label="Tripp's Tricky Tetraverse">
+              <div className="header-main">
+                <div className="header-text-block">
+                  <h1 className="app-title design-title" aria-label="Tripp's Tricky Tetraverse">
+                    Tripp's Tricky Tetraverse
+                  </h1>
+                  <p className="app-subtitle design-subtitle" style={{ fontFamily: '"Rubik Bubbles", cursive', letterSpacing: '0.05em' }}>an All Four You arcade</p>
+                </div>
+              </div>
+            </header>
+
+            {/* Main Navigation Bar */}
+            <nav className="main-overlay-nav" id="tour-nav">
+              <ul className="overlay-list">
+                <li>
+                  <button className="overlay-nav-btn interactive-hover" onClick={() => setShowPlayersOverlay(true)}>
+                    Players {player.avatarUrl ? '🙂' : ''}
+                  </button>
+                </li>
+                <li>
+                  <button className="overlay-nav-btn interactive-hover" onClick={() => setShowPrizeShop(true)}>
+                    Prize Shop 🏆
+                  </button>
+                </li>
+                <li>
+                  <button className="overlay-nav-btn interactive-hover" onClick={() => setShowSkillsOverlay(true)}>
+                    Skills Built 📊
+                  </button>
+                </li>
+                <li>
+                  <button className="overlay-nav-btn interactive-hover" onClick={() => setShowParentOverlay(true)}>
+                    Parents 🛡️
+                  </button>
+                </li>
+                <li>
+                  <button className="overlay-nav-btn interactive-hover" onClick={() => setShowAboutOverlay(true)}>
+                    About ℹ️
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          </div>
+
+          {/* Player Profile & Points Section */}
+          <section className="profile-section" id="tour-profile" aria-label="Current Player">
+            {!player.name ? (
+              <div className="profile-setup" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '10px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)' }}>Who is playing?</h3>
+                <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '320px' }}>
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={tempName}
+                    onChange={(e) => setTempName(e.target.value)}
+                    style={{ flex: 1, padding: '8px', borderRadius: '12px', border: '1px solid #ccc' }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Age"
+                    value={tempAge}
+                    onChange={(e) => setTempAge(e.target.value)}
+                    style={{ width: '70px', padding: '8px', borderRadius: '12px', border: '1px solid #ccc' }}
+                  />
+                </div>
+                <button
+                  className="primary-button"
+                  disabled={!tempName}
+                  onClick={() => {
+                    setPlayer(p => ({ ...p, name: tempName, age: tempAge ? parseInt(tempAge) : null }));
+                    playSound('success');
+                  }}
+                  style={{ width: '100%', maxWidth: '320px', justifyContent: 'center' }}
+                >
+                  Let's Play!
+                </button>
+              </div>
+            ) : (
+              <>
+                <div
+                  className="profile-card interactive-hover"
+                  onClick={() => setShowPlayersOverlay(true)}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div className="avatar-preview-box" style={{ width: 56, height: 56, borderRadius: '50%', border: '3px solid var(--color-accent)', background: '#fff' }}>
+                      {player.avatarUrl ? (
+                        player.avatarUrl.startsWith("preloaded:") ? (
+                          <span style={{ fontSize: '2rem' }}>
+                            {PRELOADED_AVATARS.find((a) => `preloaded:${a.id}` === player.avatarUrl)?.emoji}
+                          </span>
+                        ) : (
+                          <img src={player.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                        )
+                      ) : (
+                        <span style={{ fontSize: '2rem' }}>🙂</span>
+                      )}
+                    </div>
+                    <div>
+                      <h2 style={{ fontSize: '1.3rem', margin: 0, fontFamily: 'var(--font-display)' }}>{player.name}</h2>
+                      <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                        {player.age ? `${player.age} years old` : 'Ready to play!'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--color-accent)', fontFamily: 'var(--font-display)' }}>
+                      {player.points || 0} <span style={{ fontSize: '1rem', color: 'var(--text-main)' }}>pts</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '140px', lineHeight: 1.2 }}>
+                      Save up for the <strong>Prize Shop</strong>!
+                    </p>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'center', marginTop: '4px' }}>
+                  <button
+                    className="text-button"
+                    onClick={() => setShowPlayersOverlay(true)}
+                    style={{ fontSize: '0.8rem', textDecoration: 'underline', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+                  >
+                    Switch Player
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+
+          {/* Music Choice Section */}
+          <section className="music-choice-section" aria-label="Music Selection">
+            <h3 style={{ fontSize: '1.4rem', margin: '0 0 0.5rem 0' }}>🎵 Music Choice 🎵</h3>
+            <p style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)' }}>
+              Tap a button to change the music!
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
+              <button
+                className="music-tile interactive-hover"
+                onClick={toggleMusicPlay}
+                style={{ minWidth: '60px', background: isMusicPlaying ? 'var(--accent-soft)' : '#eee' }}
+              >
+                {isMusicPlaying ? '⏸' : '▶️'}
+              </button>
+              {MUSIC_TRACKS.map(t => (
+                <button
+                  key={t.key}
+                  className={`music-tile interactive-hover ${musicKey === t.key ? 'music-tile-selected' : ''}`}
+                  onClick={() => setBackgroundMusic(t.key, true)}
+                >
+                  <span style={{ fontSize: '1.4rem' }}>{t.emoji}</span>
+                  <span>{t.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </>
+      )}
+
+
 
       {showTour && (
         <TourOverlay onClose={() => setShowTour(false)} />
