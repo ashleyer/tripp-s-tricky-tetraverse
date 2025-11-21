@@ -121,6 +121,17 @@ const MUSIC_TRACKS: { key: string; label: string; emoji: string; path: string }[
   { key: "love", label: "Love", emoji: "💖", path: `${_BASE}sounds/love-in-japan.mp3` },
 ];
 
+const createEmptyPlayer = (): PlayerProfile => ({
+  name: "",
+  age: null,
+  avatarUrl: null,
+  points: 0,
+  learningProfile: {},
+  gameResults: [],
+  pointsHistory: [],
+  inventory: [],
+});
+
 // createConfetti and playSound now live in utils modules
 
 interface WelcomeBackModalProps {
@@ -155,35 +166,93 @@ const WelcomeBackModal: React.FC<WelcomeBackModalProps> = ({ playerName, onPlay,
   );
 };
 
-interface WelcomeOverlayProps {
-  onReturning: () => void;
-  onNew: () => void;
-  hasExistingPlayer: boolean;
+interface ProfilePromptModalProps {
+  existingName?: string;
+  onUseExisting: () => void;
+  onCreateNew: () => void;
+  onSkip: () => void;
 }
 
-const WelcomeOverlay: React.FC<WelcomeOverlayProps> = ({ onReturning, onNew, hasExistingPlayer }) => {
+const ProfilePromptModal: React.FC<ProfilePromptModalProps> = ({ existingName, onUseExisting, onCreateNew, onSkip }) => {
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal-content" style={{textAlign: 'center', maxWidth: '420px'}}>
-        <h2>Welcome!</h2>
-        <div style={{fontSize: '4rem', margin: '20px 0'}}>✨</div>
-        <p style={{color: 'var(--text-muted)', fontSize: '1.1rem'}}>Have you played before?</p>
-        <div style={{display: 'flex', flexDirection: 'column', gap: '12px', margin: '20px auto 0', width: '100%'}}>
-          <button 
-            className="primary-button" 
-            onClick={onReturning} 
-            style={{width: '100%'}}
-            disabled={!hasExistingPlayer}
+      <div className="modal-content" style={{ textAlign: 'center', maxWidth: 440 }}>
+        <h2>Parents: Who is playing today?</h2>
+        <p style={{ marginTop: 8, color: 'var(--text-muted)' }}>
+          Choose to reuse the saved player profile or start fresh with a new kiddo before you hand the device over.
+        </p>
+
+        {existingName ? (
+          <button
+            className="primary-button"
+            style={{ width: '100%', marginTop: 16 }}
+            onClick={onUseExisting}
           >
-            Yes, I'm a Returning Player
+            Use {existingName}'s Profile
           </button>
-          <button className="secondary-button" onClick={onNew} style={{width: '100%'}}>No, I'm a New Player</button>
+        ) : null}
+
+        <button
+          className={existingName ? 'secondary-button' : 'primary-button'}
+          style={{ width: '100%', marginTop: 12 }}
+          onClick={onCreateNew}
+        >
+          {existingName ? 'Create a New Player' : 'Set Up a Player'}
+        </button>
+
+        <button
+          className="text-button"
+          style={{ marginTop: 16, fontSize: '0.9rem', textDecoration: 'underline', color: 'var(--text-muted)' }}
+          onClick={onSkip}
+        >
+          I'll decide after exploring
+        </button>
+      </div>
+    </div>
+  );
+};
+
+interface IntroBannerProps {
+  onBegin: () => void;
+}
+
+const IntroBanner: React.FC<IntroBannerProps> = ({ onBegin }) => {
+  const slides = [
+    { emoji: '🚜', title: 'Truck Match' },
+    { emoji: '🏴‍☠️', title: "Long Shorty's Loot" },
+    { emoji: '👢', title: "Isabelle's Boot Designer" },
+    { emoji: '✈️', title: 'Airplane Catch' },
+  ];
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setIdx((i) => (i + 1) % slides.length), 900);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <div className="modal-backdrop intro-banner" role="dialog" aria-modal="true">
+      <div className="modal-content intro-content" style={{ textAlign: 'center' }}>
+        <div className="intro-carousel" aria-hidden>
+          {slides.map((s, i) => (
+            <div key={s.title} className={`intro-slide ${i === idx ? 'active' : ''}`}>
+              <div className="intro-emoji" aria-hidden>
+                {s.emoji}
+              </div>
+              <div className="intro-title">{s.title}</div>
+            </div>
+          ))}
         </div>
-        {!hasExistingPlayer && (
-          <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '12px'}}>
-            (No players found on this device)
-          </p>
-        )}
+        <h1 style={{ fontSize: '1.6rem', margin: '0.8rem 0 0.2rem' }}>Tripp's Tricky Tetraverse</h1>
+
+        <div style={{ margin: '0.6rem 0' }}>
+          <button className="primary-button" onClick={onBegin} style={{ fontSize: '1rem' }}>
+            Let's Begin
+          </button>
+        </div>
+        <h2 style={{ fontFamily: '"Bubblegum Sans", cursive', color: 'var(--color-accent)', marginTop: '1rem' }}>
+          Happy Fourth Birthday, Tripp!
+        </h2>
       </div>
     </div>
   );
@@ -193,11 +262,11 @@ function App() {
   const [player, setPlayer] = useState<PlayerProfile>(() => {
     try {
       const raw = localStorage.getItem("playerProfile");
-      if (raw) return JSON.parse(raw) as PlayerProfile;
+      if (raw) return { ...createEmptyPlayer(), ...(JSON.parse(raw) as PlayerProfile) };
     } catch (e) {
       // ignore
     }
-    return { name: "", age: null, avatarUrl: null, points: 0, learningProfile: {} };
+    return createEmptyPlayer();
   });
 
   // persist player profile locally
@@ -213,10 +282,9 @@ function App() {
   const [showPlayersOverlay, setShowPlayersOverlay] = useState<boolean>(false);
   const [showAboutOverlay, setShowAboutOverlay] = useState<boolean>(false);
   const [showIntro, setShowIntro] = useState<boolean>(true);
-  const [showWelcomeOverlay, setShowWelcomeOverlay] = useState<boolean>(false);
   const [showWelcomeBack, setShowWelcomeBack] = useState<boolean>(false);
   const [showTour, setShowTour] = useState<boolean>(false);
-  const [pendingTour, setPendingTour] = useState<boolean>(false);
+  const [showProfilePrompt, setShowProfilePrompt] = useState<boolean>(false);
   const [showTutorial, setShowTutorial] = useState<{
     gameId: GameId | null;
     visible: boolean;
@@ -602,44 +670,22 @@ function App() {
         localStorage.removeItem("playerProfile");
       }
     }
-    setShowWelcomeOverlay(true); // Show welcome overlay on initial load
   }, []);
 
   return (
     <div className={`app-root ${selectedGame ? "in-game" : ""}`}>
       <GlobalEffects />
 
-      {showWelcomeOverlay && (
-        <WelcomeOverlay 
-          hasExistingPlayer={!!player.name}
-          onReturning={() => {
-            setShowWelcomeOverlay(false);
-            setShowWelcomeBack(true);
-          }}
-          onNew={() => {
-            setShowWelcomeOverlay(false);
-            // Reset player state for new profile creation
-            setPlayer({ name: "", age: null, avatarUrl: null, points: 0, learningProfile: {} });
-          }}
-        />
-      )}
-
       {showIntro && (
         <IntroBanner
           onBegin={() => {
             setShowIntro(false);
-            if (player.name) {
-              setShowWelcomeBack(true);
-            } else {
-              setPendingTour(true);
-              setShowParentOverlay(true);
-            }
+            setShowTour(true);
           }}
         />
       )}
 
-      {!showIntro && (
-        <>
+      <>
           <div className="sticky-top-bar">
             <header className="app-header" aria-label="Tripp's Tricky Tetraverse">
               <div className="header-main">
@@ -661,17 +707,29 @@ function App() {
                   </button>
                 </li>
                 <li>
-                  <button className="overlay-nav-btn interactive-hover" onClick={() => setShowPrizeShop(true)}>
+                  <button
+                    id="tour-prize-shop"
+                    className="overlay-nav-btn interactive-hover"
+                    onClick={() => setShowPrizeShop(true)}
+                  >
                     Prize Shop 🏆
                   </button>
                 </li>
                 <li>
-                  <button className="overlay-nav-btn interactive-hover" onClick={() => setShowSkillsOverlay(true)}>
+                  <button
+                    id="tour-skills"
+                    className="overlay-nav-btn interactive-hover"
+                    onClick={() => setShowSkillsOverlay(true)}
+                  >
                     Skills Built 📊
                   </button>
                 </li>
                 <li>
-                  <button className="overlay-nav-btn interactive-hover" onClick={() => setShowParentOverlay(true)}>
+                  <button
+                    id="tour-parent"
+                    className="overlay-nav-btn interactive-hover"
+                    onClick={() => setShowParentOverlay(true)}
+                  >
                     Parents 🛡️
                   </button>
                 </li>
@@ -686,7 +744,7 @@ function App() {
 
           {/* Player Profile & Points Section */}
           <section className="profile-section" id="tour-profile" aria-label="Current Player">
-            {!player.name ? (
+            {!player.name && !showWelcomeBack && !showIntro ? (
               <div className="profile-setup" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '10px' }}>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)' }}>Who is playing?</h3>
                 <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '320px' }}>
@@ -717,7 +775,7 @@ function App() {
                   Let's Play!
                 </button>
               </div>
-            ) : (
+            ) : player.name ? (
               <>
                 <div
                   className="profile-card interactive-hover"
@@ -765,16 +823,19 @@ function App() {
                   </button>
                 </div>
               </>
-            )}
+            ) : null}
           </section>
 
           {/* Music Choice Section */}
-          <section className="music-choice-section" aria-label="Music Selection">
+          <section className="music-choice-section" id="tour-music" aria-label="Music Selection">
             <h3 style={{ fontSize: '1.4rem', margin: '0 0 0.5rem 0' }}>🎵 Music Choice 🎵</h3>
             <p style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)' }}>
               Tap a button to change the music!
             </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
+            <div
+              id="tour-music-controls"
+              style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}
+            >
               <button
                 className="music-tile interactive-hover"
                 onClick={toggleMusicPlay}
@@ -795,17 +856,22 @@ function App() {
             </div>
           </section>
         </>
-      )}
+      
 
 
 
       {showTour && (
-        <TourOverlay onClose={() => setShowTour(false)} />
+        <TourOverlay
+          onClose={() => {
+            setShowTour(false);
+            setShowProfilePrompt(true);
+          }}
+        />
       )}
 
       {/* ARIA live region for dynamic announcements */}
       <div aria-live="polite" aria-atomic="true" style={{position:'absolute',left:-9999,top:'auto',width:1,height:1,overflow:'hidden'}}> {announceText} </div>
-
+      
       {/* Arcade vs specific game */}
       {showArcade ? (
         <ArcadeView canPlay={canPlay} onSelectGame={handleSelectGame} initialGameId={lastPlayedGameId} />
@@ -845,12 +911,7 @@ function App() {
         <ParentOverlay
           onClose={() => {
             setShowParentOverlay(false);
-            if (pendingTour) {
-              setPendingTour(false);
-              setShowTour(true);
-            }
           }}
-          isDisclaimer={pendingTour}
           onOpenReport={() => {
             setShowParentOverlay(false);
             setShowParentalReport(true);
@@ -918,10 +979,8 @@ function App() {
           }}
           onSwitchPlayer={() => {
             if (window.confirm("Are you sure you want to switch players? This will sign you out.")) {
-               setPlayer({ name: "", age: null, avatarUrl: null, points: 0, learningProfile: {} });
+               setPlayer(createEmptyPlayer());
                setShowPlayersOverlay(false);
-               // Don't show intro, just let them enter new name
-               setShowIntro(false);
             }
           }}
         />
@@ -937,9 +996,25 @@ function App() {
           }}
           onSwitch={() => {
             setShowWelcomeBack(false);
-            setPlayer({ name: "", age: null, avatarUrl: null, points: 0, learningProfile: {} });
-            setShowIntro(false);
+            setPlayer(createEmptyPlayer());
           }}
+        />
+      )}
+
+      {showProfilePrompt && (
+        <ProfilePromptModal
+          existingName={player.name || undefined}
+          onUseExisting={() => setShowProfilePrompt(false)}
+          onCreateNew={() => {
+            setShowProfilePrompt(false);
+            setPlayer(createEmptyPlayer());
+            setTempName("");
+            setTempAge("");
+            requestAnimationFrame(() => {
+              document.getElementById('tour-profile')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+          }}
+          onSkip={() => setShowProfilePrompt(false)}
         />
       )}
 
@@ -957,7 +1032,7 @@ function App() {
 
       {/* Only show footer on main (arcade) page */}
       {showArcade && (
-        <footer className="app-footer">
+        <footer className="app-footer" id="tour-footer">
           <p>
             built with ❤️ by{" "}
             <a
@@ -1020,7 +1095,7 @@ const ArcadeView: React.FC<ArcadeViewProps> = ({ canPlay, onSelectGame, initialG
         </p>
       </div>
 
-      <div className="carousel-wrapper">
+      <div className="carousel-wrapper" id="tour-game-carousel">
         <button
           type="button"
           className="carousel-nav parent-button overlay-nav-btn interactive-hover"
@@ -1030,7 +1105,7 @@ const ArcadeView: React.FC<ArcadeViewProps> = ({ canPlay, onSelectGame, initialG
           ◀
         </button>
 
-        <article className="game-card" aria-roledescription="slide">
+        <article className="game-card" id="tour-game-card" aria-roledescription="slide">
           <p className="game-pill">
             #{index + 1} of {gameIds.length}
           </p>
@@ -1346,51 +1421,6 @@ const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport, sc
           </div>
         )}
 
-      </div>
-    </div>
-  );
-};
-
-// --- Intro Banner ---
-interface IntroBannerProps {
-  onBegin: () => void;
-}
-
-const IntroBanner: React.FC<IntroBannerProps> = ({ onBegin }) => {
-  const slides = [
-    { emoji: '🚜', title: 'Truck Match' },
-    { emoji: '🏴‍☠️', title: "Long Shorty's Loot" },
-    { emoji: '👢', title: 'Isabelle\'s Boot Designer' },
-    { emoji: '✈️', title: 'Airplane Catch' },
-  ];
-  const [idx, setIdx] = useState(0);
-
-  useEffect(() => {
-    const t = setInterval(() => setIdx((i) => (i + 1) % slides.length), 900);
-    return () => clearInterval(t);
-  }, []);
-
-  return (
-    <div className="modal-backdrop intro-banner" role="dialog" aria-modal="true">
-      <div className="modal-content intro-content" style={{ textAlign: 'center' }}>
-        <div className="intro-carousel" aria-hidden>
-          {slides.map((s, i) => (
-            <div key={s.title} className={`intro-slide ${i === idx ? 'active' : ''}`}>
-              <div className="intro-emoji" aria-hidden>
-                {s.emoji}
-              </div>
-              <div className="intro-title">{s.title}</div>
-            </div>
-          ))}
-        </div>
-        <h1 style={{ fontSize: '1.6rem', margin: '0.8rem 0 0.2rem' }}>Tripp's Tricky Tetraverse</h1>
-        
-        <div style={{ margin: '0.6rem 0' }}>
-          <button className="primary-button" onClick={onBegin} style={{ fontSize: '1rem' }}>
-            Tap to Begin
-          </button>
-        </div>
-        <h2 style={{ fontFamily: '"Bubblegum Sans", cursive', color: 'var(--color-accent)', marginTop: '1rem' }}>Happy Fourth Birthday, Tripp!</h2>
       </div>
     </div>
   );
@@ -2183,21 +2213,48 @@ const SkillsOverlay: React.FC<SkillsOverlayProps> = ({ player, onClose, performa
 const TourOverlay: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [step, setStep] = useState(0);
   const steps = [
-    { id: 'tour-nav', text: "Here is your menu! Check your prizes, skills, or ask a parent for help.", position: 'bottom' },
-    { id: 'tour-profile', text: "This is you! See your points and change your avatar here.", position: 'bottom' },
-    { id: 'tour-arcade', text: "Pick a game here! Swipe to see more.", position: 'top' },
+    { id: 'tour-nav', text: "Parents: this menu opens profiles, prizes, skill reports, and safety tools.", position: 'bottom' },
+    { id: 'tour-profile', text: "Set up or review your kiddo's profile, avatar, and point total here.", position: 'bottom' },
+    { id: 'tour-prize-shop', text: "Use the Prize Shop to reward earned points with pretend goodies.", position: 'bottom' },
+    { id: 'tour-skills', text: "Skills Built gives you a quick snapshot of what Tripp practiced.", position: 'bottom' },
+    { id: 'tour-parent', text: "Need the disclaimer or screen-time timer? Tap the Parents button.", position: 'bottom' },
+    { id: 'tour-music-controls', text: "Control or mute the background music for playtime right here.", position: 'top' },
+    { id: 'tour-game-carousel', text: "Swipe through the arcade to pick today's activity, then press Play.", position: 'top' },
+    { id: 'tour-footer', text: "Created by Auntie Ashley for Tripp's fourth birthday!", position: 'top' },
   ];
 
   const currentStep = steps[step];
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
-    const el = document.getElementById(currentStep.id);
-    if (el) {
-      setTargetRect(el.getBoundingClientRect());
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [step, currentStep.id]);
+    const updateRect = () => {
+      const el = document.getElementById(currentStep.id);
+      if (el) {
+        setTargetRect(el.getBoundingClientRect());
+      } else {
+        setTargetRect(null);
+      }
+    };
+
+    const raf = requestAnimationFrame(() => {
+      const el = document.getElementById(currentStep.id);
+      if (el) {
+        setTargetRect(el.getBoundingClientRect());
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        setTargetRect(null);
+      }
+    });
+
+    window.addEventListener('resize', updateRect);
+    window.addEventListener('scroll', updateRect, true);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('scroll', updateRect, true);
+    };
+  }, [currentStep.id]);
 
   const handleNext = () => {
     if (step < steps.length - 1) {
