@@ -22,7 +22,6 @@ export function playSound(key: keyof typeof soundPaths) {
   });
 }
 
-let clickToggle = false;
 export function playAlternateClick() {
   playSound('click');
 }
