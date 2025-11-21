@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { _BASE, playSound, playAlternateClick } from './utils/sound';
 import useAnnouncer from './hooks/useAnnouncer';
 import { FooterBrand } from './components/UI';
@@ -121,6 +121,8 @@ const MUSIC_TRACKS: { key: string; label: string; emoji: string; path: string }[
   { key: "love", label: "Love", emoji: "💖", path: `${_BASE}sounds/love-in-japan.mp3` },
 ];
 
+const TOUR_GAME_IDS: GameId[] = ["memory", "digging", "boots", "airplanes"];
+
 const createEmptyPlayer = (): PlayerProfile => ({
   name: "",
   age: null,
@@ -131,6 +133,34 @@ const createEmptyPlayer = (): PlayerProfile => ({
   pointsHistory: [],
   inventory: [],
 });
+
+const hydratePlayer = (data?: PlayerProfile | null): PlayerProfile => ({
+  ...createEmptyPlayer(),
+  ...(data || {}),
+});
+
+const loadStoredPlayer = (): PlayerProfile => {
+  try {
+    const raw = localStorage.getItem("playerProfile");
+    if (raw) return hydratePlayer(JSON.parse(raw) as PlayerProfile);
+  } catch (e) {
+    // ignore storage parsing errors
+  }
+  return createEmptyPlayer();
+};
+
+const loadStoredLastPlayer = (): PlayerProfile | null => {
+  try {
+    const raw = localStorage.getItem("lastPlayerProfile");
+    if (raw) {
+      const parsed = hydratePlayer(JSON.parse(raw) as PlayerProfile);
+      return parsed.name ? parsed : null;
+    }
+  } catch (e) {
+    // ignore storage parsing errors
+  }
+  return null;
+};
 
 // createConfetti and playSound now live in utils modules
 
@@ -168,12 +198,13 @@ const WelcomeBackModal: React.FC<WelcomeBackModalProps> = ({ playerName, onPlay,
 
 interface ProfilePromptModalProps {
   existingName?: string;
+  existingDetails?: string;
   onUseExisting: () => void;
   onCreateNew: () => void;
   onSkip: () => void;
 }
 
-const ProfilePromptModal: React.FC<ProfilePromptModalProps> = ({ existingName, onUseExisting, onCreateNew, onSkip }) => {
+const ProfilePromptModal: React.FC<ProfilePromptModalProps> = ({ existingName, existingDetails, onUseExisting, onCreateNew, onSkip }) => {
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <div className="modal-content" style={{ textAlign: 'center', maxWidth: 440 }}>
@@ -181,6 +212,16 @@ const ProfilePromptModal: React.FC<ProfilePromptModalProps> = ({ existingName, o
         <p style={{ marginTop: 8, color: 'var(--text-muted)' }}>
           Choose to reuse the saved player profile or start fresh with a new kiddo before you hand the device over.
         </p>
+
+        {existingName ? (
+          <p style={{ marginTop: 4, fontSize: '0.95rem', color: 'var(--text-main)' }}>
+            Last saved player: <strong>{existingDetails || existingName}</strong>
+          </p>
+        ) : (
+          <p style={{ marginTop: 4, fontSize: '0.95rem', color: 'var(--text-muted)' }}>
+            No saved player yet.
+          </p>
+        )}
 
         {existingName ? (
           <button
@@ -259,20 +300,22 @@ const IntroBanner: React.FC<IntroBannerProps> = ({ onBegin }) => {
 };
 
 function App() {
-  const [player, setPlayer] = useState<PlayerProfile>(() => {
-    try {
-      const raw = localStorage.getItem("playerProfile");
-      if (raw) return { ...createEmptyPlayer(), ...(JSON.parse(raw) as PlayerProfile) };
-    } catch (e) {
-      // ignore
-    }
-    return createEmptyPlayer();
+  const [player, setPlayer] = useState<PlayerProfile>(loadStoredPlayer);
+  const [lastPlayer, setLastPlayer] = useState<PlayerProfile | null>(() => {
+    const stored = loadStoredLastPlayer();
+    if (stored) return stored;
+    return player.name ? player : null;
   });
+  const [showCreateForm, setShowCreateForm] = useState<boolean>(() => !player.name);
 
   // persist player profile locally
   useEffect(() => {
     try {
       localStorage.setItem("playerProfile", JSON.stringify(player));
+      if (player.name) {
+        localStorage.setItem("lastPlayerProfile", JSON.stringify(player));
+        setLastPlayer(player);
+      }
     } catch (e) {}
   }, [player]);
 
@@ -285,6 +328,7 @@ function App() {
   const [showWelcomeBack, setShowWelcomeBack] = useState<boolean>(false);
   const [showTour, setShowTour] = useState<boolean>(false);
   const [showProfilePrompt, setShowProfilePrompt] = useState<boolean>(false);
+  const [tourTargetGameId, setTourTargetGameId] = useState<GameId | null>(null);
   const [showTutorial, setShowTutorial] = useState<{
     gameId: GameId | null;
     visible: boolean;
@@ -536,6 +580,76 @@ function App() {
     return Math.max(sessionBest, profileBest);
   }, [selectedGame, gameResults, player.gameResults]);
 
+  const displayProfile = player.name ? player : lastPlayer;
+
+  const screenTimeMessage = useMemo(() => {
+    if (!screenTime.limitMinutes) return "Screen time: No limit set";
+    if (screenTime.isActive) {
+      const minutesLeft = Math.max(0, Math.floor(screenTime.remainingSeconds / 60));
+      const secondsLeft = Math.max(0, screenTime.remainingSeconds % 60);
+      return `Screen time: ${minutesLeft}m ${secondsLeft}s left (limit ${screenTime.limitMinutes}m)`;
+    }
+    return `Screen time limit: ${screenTime.limitMinutes} minutes`;
+  }, [screenTime]);
+
+  const lastProfileSummary = useMemo(() => {
+    if (!lastPlayer?.name) return "No previous player";
+    const ageSuffix = lastPlayer.age ? `, ${lastPlayer.age}` : "";
+    return `${lastPlayer.name}${ageSuffix}`;
+  }, [lastPlayer]);
+
+  const handleCreateNewPlayer = useCallback(() => {
+    playSound('click');
+    setTempName("");
+    setTempAge("");
+    setShowCreateForm(true);
+    requestAnimationFrame(() => {
+      document.getElementById('profile-create-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, []);
+
+  const handleQuickCreateSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!tempName.trim()) return;
+    setPlayer({
+      ...createEmptyPlayer(),
+      name: tempName.trim(),
+      age: tempAge ? parseInt(tempAge) : null,
+    });
+    playSound('success');
+    setTempName("");
+    setTempAge("");
+    setShowCreateForm(false);
+  }, [tempAge, tempName]);
+
+  const handleProfilePromptUseExisting = useCallback(() => {
+    if (player.name) {
+      setShowProfilePrompt(false);
+      return;
+    }
+    if (lastPlayer) {
+      setPlayer(hydratePlayer(lastPlayer));
+      setShowCreateForm(false);
+    }
+    setShowProfilePrompt(false);
+  }, [lastPlayer, player.name]);
+
+  const handleProfilePromptCreateNew = useCallback(() => {
+    setShowProfilePrompt(false);
+    handleCreateNewPlayer();
+  }, [handleCreateNewPlayer]);
+
+  const handleTourStepChange = useCallback((stepId: string | null) => {
+    if (stepId && stepId.startsWith('tour-game-')) {
+      const maybeId = stepId.replace('tour-game-', '') as GameId;
+      if (TOUR_GAME_IDS.includes(maybeId)) {
+        setTourTargetGameId(maybeId);
+        return;
+      }
+    }
+    setTourTargetGameId(null);
+  }, []);
+
   // Handle selecting a game: show tutorial first time, otherwise enter game
   const handleSelectGame = (gameId: GameId) => {
     if (!canPlay) return;
@@ -702,7 +816,11 @@ function App() {
             <nav className="main-overlay-nav" id="tour-nav">
               <ul className="overlay-list">
                 <li>
-                  <button className="overlay-nav-btn interactive-hover" onClick={() => setShowPlayersOverlay(true)}>
+                  <button
+                    id="tour-menu-players"
+                    className="overlay-nav-btn interactive-hover"
+                    onClick={() => setShowPlayersOverlay(true)}
+                  >
                     Players {player.avatarUrl ? '🙂' : ''}
                   </button>
                 </li>
@@ -734,7 +852,11 @@ function App() {
                   </button>
                 </li>
                 <li>
-                  <button className="overlay-nav-btn interactive-hover" onClick={() => setShowAboutOverlay(true)}>
+                  <button
+                    id="tour-about"
+                    className="overlay-nav-btn interactive-hover"
+                    onClick={() => setShowAboutOverlay(true)}
+                  >
                     About ℹ️
                   </button>
                 </li>
@@ -744,86 +866,103 @@ function App() {
 
           {/* Player Profile & Points Section */}
           <section className="profile-section" id="tour-profile" aria-label="Current Player">
-            {!player.name && !showWelcomeBack && !showIntro ? (
-              <div className="profile-setup" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '10px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)' }}>Who is playing?</h3>
-                <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '320px' }}>
+            <div className="profile-summary-card">
+              <div className="profile-summary-main">
+                <div className="avatar-preview-box profile-summary-avatar" aria-hidden={!displayProfile?.avatarUrl}>
+                  {displayProfile?.avatarUrl ? (
+                    displayProfile.avatarUrl.startsWith("preloaded:") ? (
+                      <span style={{ fontSize: '2.4rem' }}>
+                        {PRELOADED_AVATARS.find((a) => `preloaded:${a.id}` === displayProfile.avatarUrl)?.emoji}
+                      </span>
+                    ) : (
+                      <img src={displayProfile.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                    )
+                  ) : (
+                    <span style={{ fontSize: '2.2rem' }}>🙂</span>
+                  )}
+                </div>
+                <div>
+                  <p className="profile-summary-label">Active player</p>
+                  <h2 className="profile-summary-name">{displayProfile?.name || 'No player selected'}</h2>
+                  <p className="profile-summary-points">
+                    {displayProfile?.points ?? 0} <span>pts</span>
+                  </p>
+                  <p className="profile-summary-age">
+                    {displayProfile?.age ? `${displayProfile.age} years old` : 'Load a saved profile or create a new one below.'}
+                  </p>
+                </div>
+              </div>
+              <div className="profile-summary-meta">
+                <div className="screen-time-chip">{screenTimeMessage}</div>
+                <div className="last-profile-card">
+                  <p className="last-profile-label">Last profile</p>
+                  <strong>{lastPlayer?.name || 'None saved yet'}</strong>
+                  <p className="last-profile-details">
+                    {lastPlayer?.name ? `${lastProfileSummary} • ${lastPlayer.points ?? 0} pts` : 'Play once to store a profile.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="profile-actions">
+              <button
+                className="secondary-button interactive-hover"
+                onClick={() => setShowPlayersOverlay(true)}
+              >
+                Manage Profiles
+              </button>
+              <button
+                className="primary-button interactive-hover"
+                onClick={handleCreateNewPlayer}
+              >
+                {showCreateForm ? 'Start Fresh' : 'Create New Player'}
+              </button>
+            </div>
+
+            {showCreateForm && (
+              <form
+                id="profile-create-form"
+                className="profile-setup"
+                onSubmit={handleQuickCreateSubmit}
+                style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '10px' }}
+              >
+                <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)' }}>Add a new player</h3>
+                <div style={{ display: 'flex', gap: '8px', width: '100%', flexWrap: 'wrap' }}>
                   <input
                     type="text"
                     placeholder="Name"
                     value={tempName}
                     onChange={(e) => setTempName(e.target.value)}
-                    style={{ flex: 1, padding: '8px', borderRadius: '12px', border: '1px solid #ccc' }}
+                    style={{ flex: '1 1 180px', padding: '8px', borderRadius: '12px', border: '1px solid #ccc' }}
                   />
                   <input
                     type="number"
                     placeholder="Age"
                     value={tempAge}
                     onChange={(e) => setTempAge(e.target.value)}
-                    style={{ width: '70px', padding: '8px', borderRadius: '12px', border: '1px solid #ccc' }}
+                    style={{ width: '90px', padding: '8px', borderRadius: '12px', border: '1px solid #ccc' }}
                   />
                 </div>
-                <button
-                  className="primary-button"
-                  disabled={!tempName}
-                  onClick={() => {
-                    setPlayer(p => ({ ...p, name: tempName, age: tempAge ? parseInt(tempAge) : null }));
-                    playSound('success');
-                  }}
-                  style={{ width: '100%', maxWidth: '320px', justifyContent: 'center' }}
-                >
-                  Let's Play!
-                </button>
-              </div>
-            ) : player.name ? (
-              <>
-                <div
-                  className="profile-card interactive-hover"
-                  onClick={() => setShowPlayersOverlay(true)}
-                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div className="avatar-preview-box" style={{ width: 56, height: 56, borderRadius: '50%', border: '3px solid var(--color-accent)', background: '#fff' }}>
-                      {player.avatarUrl ? (
-                        player.avatarUrl.startsWith("preloaded:") ? (
-                          <span style={{ fontSize: '2rem' }}>
-                            {PRELOADED_AVATARS.find((a) => `preloaded:${a.id}` === player.avatarUrl)?.emoji}
-                          </span>
-                        ) : (
-                          <img src={player.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                        )
-                      ) : (
-                        <span style={{ fontSize: '2rem' }}>🙂</span>
-                      )}
-                    </div>
-                    <div>
-                      <h2 style={{ fontSize: '1.3rem', margin: 0, fontFamily: 'var(--font-display)' }}>{player.name}</h2>
-                      <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                        {player.age ? `${player.age} years old` : 'Ready to play!'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--color-accent)', fontFamily: 'var(--font-display)' }}>
-                      {player.points || 0} <span style={{ fontSize: '1rem', color: 'var(--text-main)' }}>pts</span>
-                    </div>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '140px', lineHeight: 1.2 }}>
-                      Save up for the <strong>Prize Shop</strong>!
-                    </p>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'center', marginTop: '4px' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button
-                    className="text-button"
-                    onClick={() => setShowPlayersOverlay(true)}
-                    style={{ fontSize: '0.8rem', textDecoration: 'underline', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+                    className="primary-button"
+                    type="submit"
+                    disabled={!tempName.trim()}
+                    style={{ flex: '1 1 200px', justifyContent: 'center' }}
                   >
-                    Switch Player
+                    Save Player
+                  </button>
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => setShowCreateForm(false)}
+                    style={{ fontSize: '0.9rem', textDecoration: 'underline', color: 'var(--text-muted)' }}
+                  >
+                    Cancel
                   </button>
                 </div>
-              </>
-            ) : null}
+              </form>
+            )}
           </section>
 
           {/* Music Choice Section */}
@@ -865,7 +1004,9 @@ function App() {
           onClose={() => {
             setShowTour(false);
             setShowProfilePrompt(true);
+            setTourTargetGameId(null);
           }}
+          onStepChange={handleTourStepChange}
         />
       )}
 
@@ -874,7 +1015,12 @@ function App() {
       
       {/* Arcade vs specific game */}
       {showArcade ? (
-        <ArcadeView canPlay={canPlay} onSelectGame={handleSelectGame} initialGameId={lastPlayedGameId} />
+        <ArcadeView
+          canPlay={canPlay}
+          onSelectGame={handleSelectGame}
+          initialGameId={lastPlayedGameId}
+          tourTargetGameId={tourTargetGameId}
+        />
       ) : selectedGame ? (
         <GameView
           gameId={selectedGame}
@@ -971,6 +1117,7 @@ function App() {
           onSave={(p) => {
             setPlayer(p);
             setShowPlayersOverlay(false);
+            setShowCreateForm(false);
           }}
           performanceSummary={performanceSummary}
           onOpenReport={() => {
@@ -981,6 +1128,9 @@ function App() {
             if (window.confirm("Are you sure you want to switch players? This will sign you out.")) {
                setPlayer(createEmptyPlayer());
                setShowPlayersOverlay(false);
+               setShowCreateForm(true);
+               setTempName("");
+               setTempAge("");
             }
           }}
         />
@@ -997,23 +1147,19 @@ function App() {
           onSwitch={() => {
             setShowWelcomeBack(false);
             setPlayer(createEmptyPlayer());
+            setShowCreateForm(true);
+            setTempName("");
+            setTempAge("");
           }}
         />
       )}
 
       {showProfilePrompt && (
         <ProfilePromptModal
-          existingName={player.name || undefined}
-          onUseExisting={() => setShowProfilePrompt(false)}
-          onCreateNew={() => {
-            setShowProfilePrompt(false);
-            setPlayer(createEmptyPlayer());
-            setTempName("");
-            setTempAge("");
-            requestAnimationFrame(() => {
-              document.getElementById('tour-profile')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            });
-          }}
+          existingName={player.name || lastPlayer?.name || undefined}
+          existingDetails={player.name ? `${player.name}${player.age ? `, ${player.age}` : ''}` : lastPlayer?.name ? lastProfileSummary : undefined}
+          onUseExisting={handleProfilePromptUseExisting}
+          onCreateNew={handleProfilePromptCreateNew}
           onSkip={() => setShowProfilePrompt(false)}
         />
       )}
@@ -1056,17 +1202,26 @@ interface ArcadeViewProps {
   canPlay: boolean;
   onSelectGame: (gameId: GameId) => void;
   initialGameId: GameId | null;
+  tourTargetGameId?: GameId | null;
 }
 
-const ArcadeView: React.FC<ArcadeViewProps> = ({ canPlay, onSelectGame, initialGameId }) => {
-  const gameIds: GameId[] = ["memory", "digging", "boots", "airplanes"];
+const ArcadeView: React.FC<ArcadeViewProps> = ({ canPlay, onSelectGame, initialGameId, tourTargetGameId }) => {
+  const gameIds = TOUR_GAME_IDS;
   const [index, setIndex] = useState(() => {
     if (initialGameId) {
-      const found = gameIds.indexOf(initialGameId);
+      const found = TOUR_GAME_IDS.indexOf(initialGameId);
       return found !== -1 ? found : 0;
     }
     return 0;
   });
+
+  useEffect(() => {
+    if (!tourTargetGameId) return;
+    const targetIndex = TOUR_GAME_IDS.indexOf(tourTargetGameId);
+    if (targetIndex !== -1 && targetIndex !== index) {
+      setIndex(targetIndex);
+    }
+  }, [tourTargetGameId, index]);
 
   const currentGameId = gameIds[index];
   const currentGame = GAME_METADATA[currentGameId];
@@ -1105,7 +1260,7 @@ const ArcadeView: React.FC<ArcadeViewProps> = ({ canPlay, onSelectGame, initialG
           ◀
         </button>
 
-        <article className="game-card" id="tour-game-card" aria-roledescription="slide">
+        <article className="game-card" id={`tour-game-${currentGameId}`} aria-roledescription="slide">
           <p className="game-pill">
             #{index + 1} of {gameIds.length}
           </p>
@@ -2210,21 +2365,40 @@ const SkillsOverlay: React.FC<SkillsOverlayProps> = ({ player, onClose, performa
 };
 
 // --- Tour Overlay ---
-const TourOverlay: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+interface TourOverlayProps {
+  onClose: () => void;
+  onStepChange?: (stepId: string | null) => void;
+}
+
+const TourOverlay: React.FC<TourOverlayProps> = ({ onClose, onStepChange }) => {
   const [step, setStep] = useState(0);
   const steps = [
-    { id: 'tour-nav', text: "Parents: this menu opens profiles, prizes, skill reports, and safety tools.", position: 'bottom' },
-    { id: 'tour-profile', text: "Set up or review your kiddo's profile, avatar, and point total here.", position: 'bottom' },
-    { id: 'tour-prize-shop', text: "Use the Prize Shop to reward earned points with pretend goodies.", position: 'bottom' },
-    { id: 'tour-skills', text: "Skills Built gives you a quick snapshot of what Tripp practiced.", position: 'bottom' },
-    { id: 'tour-parent', text: "Need the disclaimer or screen-time timer? Tap the Parents button.", position: 'bottom' },
-    { id: 'tour-music-controls', text: "Control or mute the background music for playtime right here.", position: 'top' },
-    { id: 'tour-game-carousel', text: "Swipe through the arcade to pick today's activity, then press Play.", position: 'top' },
-    { id: 'tour-footer', text: "Created by Auntie Ashley for Tripp's fourth birthday!", position: 'top' },
+    { id: 'tour-menu-players', text: "Players button opens saved profiles so you can switch kiddos or edit details.", position: 'bottom' },
+    { id: 'tour-prize-shop', text: "Prize Shop lets you convert earned points into pretend goodies for motivation.", position: 'bottom' },
+    { id: 'tour-skills', text: "Skills Built gives caregivers a quick snapshot of what was practiced.", position: 'bottom' },
+    { id: 'tour-parent', text: "Parents button houses the disclaimer plus screen-time timers and reports.", position: 'bottom' },
+    { id: 'tour-about', text: "About explains the arcade's purpose and how to reach the creator.", position: 'bottom' },
+    { id: 'tour-profile', text: "This panel shows the active avatar, point total, and screen-time status.", position: 'bottom' },
+    { id: 'tour-music-controls', text: "Pick or mute the soundtrack here before handing off the device.", position: 'top' },
+    { id: 'tour-game-memory', text: "Truck Match builds memory and focus by pairing trucks and tools.", position: 'top' },
+    { id: 'tour-game-digging', text: "Long Shorty's Loot is a calm tap game about patience and cause/effect.", position: 'top' },
+    { id: 'tour-game-boots', text: "Boot Designer sparks creativity with colors, stickers, and patterns.", position: 'top' },
+    { id: 'tour-game-airplanes', text: "Airplane Catch sharpens reaction time and hand-eye coordination.", position: 'top' },
+    { id: 'tour-footer', text: "Created with love by Auntie Ashley.", position: 'top' },
   ];
 
   const currentStep = steps[step];
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+
+  useEffect(() => {
+    onStepChange?.(currentStep.id);
+  }, [currentStep.id, onStepChange]);
+
+  useEffect(() => {
+    return () => {
+      onStepChange?.(null);
+    };
+  }, [onStepChange]);
 
   useEffect(() => {
     const updateRect = () => {
@@ -2261,6 +2435,7 @@ const TourOverlay: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       setStep(s => s + 1);
       playSound('click');
     } else {
+      onStepChange?.(null);
       onClose();
       playSound('success');
     }
