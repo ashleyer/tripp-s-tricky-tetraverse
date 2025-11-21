@@ -1,0 +1,113 @@
+:root {
+  font-family: 'Shooting Star', 'Comic Sans MS', 'Trebuchet MS', 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* Child-friendly Arcade Palette */
+  --color-space-blue: #0b3d91;
+  --color-star-white: #ffffff;
+  --color-nebula-pink: #ff6b6b;
+  --color-planet-orange: #ffb347;
+  --color-alien-green: #7ed957;
+  --color-comet-blue: #4cc9f0;
+  --color-sun-yellow: #ffd93d;
+  
+  --bg-primary: var(--color-space-blue);
+  --text-primary: #1a1a1a;
+  --text-light: #ffffff;
+  
+  --radius-xl: 24px;
+  --shadow-pop: 0 8px 0 rgba(0,0,0,0.2);
+
+  color-scheme: light;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: var(--bg-primary);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #fffefb;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+.polka-bg {
+  background-color: #fff !important;
+  background-image: radial-gradient(circle, #7ed957 0.18em, transparent 0.19em),
+    radial-gradient(circle, #7ed957 0.18em, transparent 0.19em);
+  background-size: 1.2em 1.2em;
+  background-position: 0 0, 0.6em 0.6em;
+}
+
+div.game-panel, section.game-panel, .game-panel, .game-card, .game-pill {
+  background-color: #fff !important;
+  background-image: radial-gradient(circle, #7ed957 0.18em, transparent 0.19em),
+    radial-gradient(circle, #7ed957 0.18em, transparent 0.19em);
+  background-size: 1.2em 1.2em;
+  background-position: 0 0, 0.6em 0.6em;
+}
+
+.game-card {
+  background: #fff !important;
+  background-image: none !important;
+  background-color: #fff !important;
+}
+
+.parent-button {
+  background: rgba(63, 115, 235, 0.698) !important; /* sheer blue */
+  color: #0a2250 !important; /* dark blue text */
+  border: 1px solid rgba(30, 80, 200, 0.32);
+  box-shadow: var(--shadow-subtle);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #7db3e2;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
