@@ -1850,7 +1850,7 @@ const ParentOverlay: React.FC<ParentOverlayProps> = ({ onClose, onOpenReport, sc
             autoFocus
             style={{ marginLeft: 'auto' }}
           >
-            {isDisclaimer ? "Got it – Let's Play" : "Close"}
+            {isDisclaimer ? "Got it – Let's Play" : "Back to Arcade"}
           </button>
         </div>
 

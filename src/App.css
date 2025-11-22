@@ -95,21 +95,22 @@
 @media (max-width: 800px) {
   .main-overlay-nav {
     flex-direction: column;
-    gap: 12px;
-    align-items: center;
-    padding: 0.8rem 0.9rem;
-    margin: 0.6rem auto 1rem auto;
+    gap: 8px;
+    align-items: stretch;
+    padding: 0.6rem 0.6rem;
+    margin: 0.4rem auto 0.8rem auto;
   }
   .overlay-list {
-    flex-direction: row;
-    gap: 16px;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: center;
     flex-wrap: nowrap;
     width: 100%;
   }
   .overlay-list li {
     flex: 1 1 auto;
-    justify-content: center;
+    justify-content: stretch;
+    width: 100%;
   }
   .music-choice-section {
     max-width: 98vw;
@@ -126,7 +127,7 @@
     padding: 0.5rem 0.5rem 0.4rem 0.5rem;
   }
   .modal-content {
-    padding: 18px 6vw 18px 6vw;
+    padding: 16px 5vw 16px 5vw;
     max-width: 98vw;
   }
 }
@@ -142,7 +143,7 @@
     padding: 0.7rem 0.2rem 0.7rem 0.2rem;
   }
   .modal-content {
-    padding: 10px 2vw 10px 2vw;
+    padding: 12px 3vw 12px 3vw;
     font-size: 0.98rem;
   }
 }
@@ -979,9 +980,11 @@ body {
   padding: 38px 28px 28px 28px;
   max-width: 540px;
   width: 98vw;
-  margin: 0 auto;
+  margin: 1.2rem auto;
   position: relative;
   border: 4px solid #ffb347;
+  max-height: calc(100vh - 2.4rem);
+  overflow-y: auto;
 }
 .modal-content h2, .modal-content h3 {
   color: #ff6f61;
