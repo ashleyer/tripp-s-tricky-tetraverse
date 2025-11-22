@@ -104,6 +104,7 @@
     flex-direction: column;
     gap: 8px;
     justify-content: center;
+    align-items: stretch;
     flex-wrap: nowrap;
     width: 100%;
   }
@@ -111,6 +112,10 @@
     flex: 1 1 auto;
     justify-content: stretch;
     width: 100%;
+  }
+  .overlay-nav-btn {
+    width: 100%;
+    text-align: center;
   }
   .music-choice-section {
     max-width: 98vw;
